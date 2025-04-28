@@ -88,24 +88,27 @@ class PINN(nn.Module):
             create_graph=True
         )[0]
         
+        # Use allow_unused=True for derivatives that may not be involved in further computation
         c_xx = torch.autograd.grad(
             c_x, x, 
             grad_outputs=torch.ones_like(c_x),
             retain_graph=True,
             create_graph=True,
-            allow_unused=True
+            allow_unused=True  # Allow unused gradients if needed
         )[0]
         
         c_yy = torch.autograd.grad(
             c_y, y, 
             grad_outputs=torch.ones_like(c_y),
             retain_graph=True,
-            create_graph=True
+            create_graph=True,
+            allow_unused=True  # Allow unused gradients if needed
         )[0]
         
         # Compute PDE residual
         v_x, v_y = self.v
         return c_t + v_x * c_x + v_y * c_y - self.D * (c_xx + c_yy)
+
 
 
 def lhs_sampling(n_samples, domain, time_range=None):
