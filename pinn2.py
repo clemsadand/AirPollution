@@ -88,13 +88,13 @@ class PINN(nn.Module):
             create_graph=True
         )[0]
         
-        # Use allow_unused=True for derivatives that may not be involved in further computation
+        # Compute second derivatives with check for unused gradients
         c_xx = torch.autograd.grad(
             c_x, x, 
             grad_outputs=torch.ones_like(c_x),
             retain_graph=True,
             create_graph=True,
-            allow_unused=True  # Allow unused gradients if needed
+            allow_unused=True
         )[0]
         
         c_yy = torch.autograd.grad(
@@ -102,8 +102,14 @@ class PINN(nn.Module):
             grad_outputs=torch.ones_like(c_y),
             retain_graph=True,
             create_graph=True,
-            allow_unused=True  # Allow unused gradients if needed
+            allow_unused=True
         )[0]
+        
+        # Check for None values and set them to zero if unused
+        if c_xx is None:
+            c_xx = torch.zeros_like(c_x)
+        if c_yy is None:
+            c_yy = torch.zeros_like(c_y)
         
         # Compute PDE residual
         v_x, v_y = self.v
