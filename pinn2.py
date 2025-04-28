@@ -13,6 +13,10 @@ from pyDOE import lhs  # Latin Hypercube Sampling
 torch.manual_seed(1234)
 np.random.seed(1234)
 
+# Check if GPU is available
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+
 class PINN(nn.Module):
     def __init__(self, layers, D, v):
         """
@@ -40,6 +44,9 @@ class PINN(nn.Module):
         layer_list.append(nn.Linear(layers[-2], layers[-1]))
         
         self.model = nn.Sequential(*layer_list)
+        
+        # Move model to device
+        self.to(device)
     
     def forward(self, t, x, y):
         """Forward pass through the network"""
@@ -49,14 +56,17 @@ class PINN(nn.Module):
     
     def f_analytical(self, t, x, y):
         """Analytical solution for the pollutant concentration"""
-        t = t.detach().numpy()
-        x = x.detach().numpy()
-        y = y.detach().numpy()
+        # Move to CPU for numpy operations
+        t_np = t.cpu().detach().numpy()
+        x_np = x.cpu().detach().numpy()
+        y_np = y.cpu().detach().numpy()
         
         v_x, v_y = self.v
-        denominator = np.pi * (4 * self.D * t + self.sigma**2)
-        numerator = np.exp(-((x - v_x * t)**2 + (y - v_y * t)**2) / (4 * self.D * t + self.sigma**2))
-        return torch.tensor(numerator / denominator, dtype=torch.float32)
+        denominator = np.pi * (4 * self.D * t_np + self.sigma**2)
+        numerator = np.exp(-((x_np - v_x * t_np)**2 + (y_np - v_y * t_np)**2) / (4 * self.D * t_np + self.sigma**2))
+        result = numerator / denominator
+        # Return result to the same device as input tensors
+        return torch.tensor(result, dtype=torch.float32, device=t.device)
     
     def compute_pde_residual(self, t, x, y):
         """Compute the PDE residual: dc/dt + v·∇c - D·∆c"""
@@ -116,7 +126,6 @@ class PINN(nn.Module):
         return c_t + v_x * c_x + v_y * c_y - self.D * (c_xx + c_yy)
 
 
-
 def lhs_sampling(n_samples, domain, time_range=None):
     """
     Generate Latin Hypercube samples within the domain
@@ -138,7 +147,8 @@ def lhs_sampling(n_samples, domain, time_range=None):
         # Scale to domain range
         x_samples = (x_max - x_min) * samples[:, 0:1] + x_min
         y_samples = (y_max - y_min) * samples[:, 1:2] + y_min
-        return torch.tensor(x_samples, dtype=torch.float32), torch.tensor(y_samples, dtype=torch.float32)
+        return (torch.tensor(x_samples, dtype=torch.float32, device=device), 
+                torch.tensor(y_samples, dtype=torch.float32, device=device))
     else:
         # Generate 3D Latin Hypercube samples
         t_min, t_max = time_range
@@ -147,7 +157,9 @@ def lhs_sampling(n_samples, domain, time_range=None):
         t_samples = (t_max - t_min) * samples[:, 0:1] + t_min
         x_samples = (x_max - x_min) * samples[:, 1:2] + x_min
         y_samples = (y_max - y_min) * samples[:, 2:3] + y_min
-        return torch.tensor(t_samples, dtype=torch.float32), torch.tensor(x_samples, dtype=torch.float32), torch.tensor(y_samples, dtype=torch.float32)
+        return (torch.tensor(t_samples, dtype=torch.float32, device=device), 
+                torch.tensor(x_samples, dtype=torch.float32, device=device), 
+                torch.tensor(y_samples, dtype=torch.float32, device=device))
 
 
 def sample_boundary_points(n_samples, domain, time_range):
@@ -170,26 +182,26 @@ def sample_boundary_points(n_samples, domain, time_range):
     
     # Sample times for all boundaries using Latin Hypercube
     t_samples = lhs(1, n_samples)
-    t_bc = torch.tensor((t_max - t_min) * t_samples + t_min, dtype=torch.float32)
+    t_bc = torch.tensor((t_max - t_min) * t_samples + t_min, dtype=torch.float32, device=device)
     
     # Left boundary (x = x_min)
     left_samples = lhs(1, n_per_boundary)
-    y_bc_left = torch.tensor((y_max - y_min) * left_samples + y_min, dtype=torch.float32)
+    y_bc_left = torch.tensor((y_max - y_min) * left_samples + y_min, dtype=torch.float32, device=device)
     x_bc_left = torch.ones_like(y_bc_left) * x_min
     
     # Right boundary (x = x_max)
     right_samples = lhs(1, n_per_boundary)
-    y_bc_right = torch.tensor((y_max - y_min) * right_samples + y_min, dtype=torch.float32)
+    y_bc_right = torch.tensor((y_max - y_min) * right_samples + y_min, dtype=torch.float32, device=device)
     x_bc_right = torch.ones_like(y_bc_right) * x_max
     
     # Bottom boundary (y = y_min)
     bottom_samples = lhs(1, n_per_boundary)
-    x_bc_bottom = torch.tensor((x_max - x_min) * bottom_samples + x_min, dtype=torch.float32)
+    x_bc_bottom = torch.tensor((x_max - x_min) * bottom_samples + x_min, dtype=torch.float32, device=device)
     y_bc_bottom = torch.ones_like(x_bc_bottom) * y_min
     
     # Top boundary (y = y_max)
     top_samples = lhs(1, n_per_boundary)
-    x_bc_top = torch.tensor((x_max - x_min) * top_samples + x_min, dtype=torch.float32)
+    x_bc_top = torch.tensor((x_max - x_min) * top_samples + x_min, dtype=torch.float32, device=device)
     y_bc_top = torch.ones_like(x_bc_top) * y_max
     
     # Combine all boundary points
@@ -225,7 +237,7 @@ def train_pinn(model, domain, time_range, batch_sizes, learning_rate, epochs, la
     
     # Pre-generate LHS points for initial condition
     x_ic, y_ic = lhs_sampling(batch_sizes['ic'], domain)
-    t_ic = torch.zeros((batch_sizes['ic'], 1))
+    t_ic = torch.zeros((batch_sizes['ic'], 1), device=device)
     
     # Training loop
     for epoch in tqdm(range(epochs)):
@@ -312,16 +324,16 @@ def evaluate_model(model, domain, T_max, resolution=50):
     
     for i, t_val in enumerate(time_points):
         # Convert to torch tensors
-        t = torch.tensor(np.full((resolution*resolution, 1), t_val), dtype=torch.float32)
-        x_flat = torch.tensor(X.flatten().reshape(-1, 1), dtype=torch.float32)
-        y_flat = torch.tensor(Y.flatten().reshape(-1, 1), dtype=torch.float32)
+        t = torch.tensor(np.full((resolution*resolution, 1), t_val), dtype=torch.float32, device=device)
+        x_flat = torch.tensor(X.flatten().reshape(-1, 1), dtype=torch.float32, device=device)
+        y_flat = torch.tensor(Y.flatten().reshape(-1, 1), dtype=torch.float32, device=device)
         
         # Model prediction
         with torch.no_grad():
-            c_pred = model(t, x_flat, y_flat).numpy().reshape(resolution, resolution)
+            c_pred = model(t, x_flat, y_flat).cpu().numpy().reshape(resolution, resolution)
         
         # Analytical solution
-        c_analytical = model.f_analytical(t, x_flat, y_flat).numpy().reshape(resolution, resolution)
+        c_analytical = model.f_analytical(t, x_flat, y_flat).cpu().numpy().reshape(resolution, resolution)
         
         # # Compute error
         # error = np.abs(c_pred - c_analytical)
@@ -377,16 +389,16 @@ def plot_collocation_points(domain, time_range, batch_sizes):
     x_ic, y_ic = lhs_sampling(batch_sizes['ic'], domain)
     t_bc, x_bc, y_bc = sample_boundary_points(batch_sizes['bc'], domain, time_range)
     
-    # Convert to numpy for plotting
-    x_pde_np = x_pde.numpy()
-    y_pde_np = y_pde.numpy()
-    t_pde_np = t_pde.numpy()
+    # Convert to numpy for plotting (move to CPU first)
+    x_pde_np = x_pde.cpu().numpy()
+    y_pde_np = y_pde.cpu().numpy()
+    t_pde_np = t_pde.cpu().numpy()
     
-    x_ic_np = x_ic.numpy()
-    y_ic_np = y_ic.numpy()
+    x_ic_np = x_ic.cpu().numpy()
+    y_ic_np = y_ic.cpu().numpy()
     
-    x_bc_np = x_bc.numpy()
-    y_bc_np = y_bc.numpy()
+    x_bc_np = x_bc.cpu().numpy()
+    y_bc_np = y_bc.cpu().numpy()
     
     # Plot spatial distribution of collocation points
     plt.figure(figsize=(10, 8))
@@ -412,32 +424,20 @@ def plot_collocation_points(domain, time_range, batch_sizes):
     plt.show()
 
 def compute_error(model, t, x, y):
-    """Calcule l'erreur entre la prédiction du modèle et la solution exacte"""
-    # t = torch.tensor(np.full((resolution*resolution, 1), t_val), dtype=torch.float32)
-    t = torch.tensor(t, dtype=torch.float32)
-    x_flat = torch.tensor(x.flatten().reshape(-1, 1), dtype=torch.float32)
-    y_flat = torch.tensor(y.flatten().reshape(-1, 1), dtype=torch.float32)
+    """Calculate error between model prediction and exact solution"""
+    # Move inputs to device
+    t_tensor = torch.tensor(t, dtype=torch.float32, device=device)
+    x_flat = torch.tensor(x.flatten().reshape(-1, 1), dtype=torch.float32, device=device)
+    y_flat = torch.tensor(y.flatten().reshape(-1, 1), dtype=torch.float32, device=device)
             
     # Model prediction
     with torch.no_grad():
-        u_pred = model(t, x_flat, y_flat).numpy().flatten()
+        u_pred = model(t_tensor, x_flat, y_flat).cpu().numpy().flatten()
             
     # Analytical solution
-    u_exact = model.f_analytical(t, x_flat, y_flat).numpy().flatten()
+    u_exact = model.f_analytical(t_tensor, x_flat, y_flat).cpu().numpy().flatten()
 
-    # # Conversion en tenseurs PyTorch
-    # t_tensor = torch.tensor(t, dtype=torch.float32).to(device)
-    # x_tensor = torch.tensor(x, dtype=torch.float32).to(device)
-    # y_tensor = torch.tensor(y, dtype=torch.float32).to(device)
-
-    # # Prédiction du modèle
-    # u_pred = model.predict(t_tensor, x_tensor, y_tensor)
-
-    # # Solution exacte
-    # # u_exact = exact_sol_fn(t, x, y).reshape(-1, 1)
-    # u_exact = model.f_analytical(t, x, y).numpy().reshape(-1, 1)
-
-    # Calcul des erreurs
+    # Calculate errors
     error = np.abs(u_pred - u_exact)
     rel_l2_error = np.sqrt(np.mean(np.square(error))) / (np.sqrt(np.mean(np.square(u_exact))) + 1e-10)
     max_error = np.max(error)
@@ -473,17 +473,17 @@ def compute_convergence_metrics(model, domain, time_range, resolutions=[20, 40, 
         res_errors_linf = []
         
         for t_val in time_points:
-            # Convert to torch tensors
-            t = torch.tensor(np.full((resolution*resolution, 1), t_val), dtype=torch.float32)
-            x_flat = torch.tensor(X.flatten().reshape(-1, 1), dtype=torch.float32)
-            y_flat = torch.tensor(Y.flatten().reshape(-1, 1), dtype=torch.float32)
+            # Convert to torch tensors on device
+            t = torch.tensor(np.full((resolution*resolution, 1), t_val), dtype=torch.float32, device=device)
+            x_flat = torch.tensor(X.flatten().reshape(-1, 1), dtype=torch.float32, device=device)
+            y_flat = torch.tensor(Y.flatten().reshape(-1, 1), dtype=torch.float32, device=device)
             
             # Model prediction
             with torch.no_grad():
-                c_pred = model(t, x_flat, y_flat).numpy().flatten()
+                c_pred = model(t, x_flat, y_flat).cpu().numpy().flatten()
             
             # Analytical solution
-            c_analytical = model.f_analytical(t, x_flat, y_flat).numpy().flatten()
+            c_analytical = model.f_analytical(t, x_flat, y_flat).cpu().numpy().flatten()
             
             # Compute errors
             error = np.abs(c_pred - c_analytical)
@@ -541,6 +541,7 @@ def main():
     
     # Create model
     model = PINN(layers, D, v)
+    print(f"Model moved to {next(model.parameters()).device}")
     
     # # Visualize the distribution of collocation points
     # plot_collocation_points(domain, time_range, batch_sizes)
@@ -562,11 +563,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # domain = [-20, 20, -20, 20]  # [x_min, x_max, y_min, y_max] in km
-    # time_range = [0, 10]
-    # for n_samples in range(4, 20, 4):
-    #     sa = lhs_sampling(n_samples, domain, time_range)
-    #     print(sa[0].shape)
-    #     print(sa[1].shape)
-    #     print(sa[2].shape)
-    #     print()
