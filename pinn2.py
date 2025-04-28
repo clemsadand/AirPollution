@@ -92,7 +92,8 @@ class PINN(nn.Module):
             c_x, x, 
             grad_outputs=torch.ones_like(c_x),
             retain_graph=True,
-            create_graph=True
+            create_graph=True,
+            allow_unused=True
         )[0]
         
         c_yy = torch.autograd.grad(
