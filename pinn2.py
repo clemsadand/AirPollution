@@ -40,13 +40,12 @@ class PINN(nn.Module):
         layer_list = []
         for i in range(len(layers)-2):
             layer_list.append(nn.Linear(layers[i], layers[i+1]))
+            # Weight initialization
+            nn.init.xavier_normal_(layer_list[-1].weight)
+            nn.init.zeros_(layer_list[-1].bias)
+            #Adding Activation
             layer_list.append(self.activation)
         layer_list.append(nn.Linear(layers[-2], layers[-1]))
-
-        # Weight initialization
-        for layer in layer_list:
-            nn.init.xavier_normal_(layer.weight)
-            nn.init.zeros_(layer.bias)
         
         self.model = nn.Sequential(*layer_list)
         
