@@ -712,7 +712,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         error_values = vertex_values - analytical_vertex_values
         
         # Create subplot
-        fig, axs = plt.subplots(1, 2, figsize=(18, 6))
+        fig, axs = plt.subplots(1, 2, figsize=(15, 5))
         
         # Plot numerical solution
         triang = mtri.Triangulation(points[:, 0], points[:, 1], triangles)
