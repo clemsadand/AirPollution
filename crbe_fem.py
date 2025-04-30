@@ -1,6 +1,3 @@
-# Crouzeix-Raviart FEM with Backward Euler for Advection-Diffusion Equation
-
-
 import meshio
 import numpy as np
 import matplotlib.pyplot as plt
@@ -47,7 +44,7 @@ def create_mesh(n_points_per_axis=20, domain_size=2.0, filename="square_mesh.msh
     return filename
 
 
-class DomainParams:
+class Domains:
     """Parameters defining the domain of the problem."""
     
     def __init__(self, Lx, Ly, T):
@@ -58,10 +55,10 @@ class DomainParams:
 
     def is_boundary(self, x):
         """Check if points are on boundary."""
-        is_left = np.isclose(x[:, 0], -self.Lx)
-        is_right = np.isclose(x[:, 0], self.Lx)
-        is_bottom = np.isclose(x[:, 1], -self.Ly)
-        is_top = np.isclose(x[:, 1], self.Ly)
+        is_left = np.isclose(x[:, 0], -self.Lx, atol=1e-10)
+        is_right = np.isclose(x[:, 0], self.Lx, atol=1e-10)
+        is_bottom = np.isclose(x[:, 1], -self.Ly, atol=1e-10)
+        is_top = np.isclose(x[:, 1], self.Ly, atol=1e-10)
         return is_left | is_right | is_bottom | is_top
 
 
@@ -74,11 +71,19 @@ class Models:
         self.vy = vy
         self.D = D
         self.sigma = sigma
+        # Compute Peclet number
+        self.peclet = None  # Will be set after mesh creation
+
+    def set_peclet(self, characteristic_length):
+        """Compute Peclet number for the problem."""
+        v_mag = np.sqrt(self.vx**2 + self.vy**2)
+        self.peclet = v_mag * characteristic_length / (2 * self.D)
+        print(f"Peclet number: {self.peclet}")
 
     def analytical_solution(self, xyt):
         """Compute analytical solution at space-time points."""
         # Handle t=0 case separately to avoid division by zero
-        t_zero_mask = xyt[:,2] == 0
+        t_zero_mask = np.isclose(xyt[:,2], 0.0, atol=1e-14)
         result = np.zeros_like(xyt[:,0])
         
         # For t=0 points
@@ -100,29 +105,6 @@ class Models:
             
         return result
 
-    def grad_analytical_solution(self, xyt):
-        """Compute gradient of analytical solution."""
-        # Handle t=0 case separately
-        t_zero_mask = xyt[:,2] == 0
-        du_dx = np.zeros_like(xyt[:,0])
-        du_dy = np.zeros_like(xyt[:,0])
-        
-        # For t=0 points
-        if np.any(t_zero_mask):
-            denom_zero = self.sigma**2
-            u_zero = self.analytical_solution(xyt[t_zero_mask])
-            du_dx[t_zero_mask] = -2 * xyt[t_zero_mask,0] * u_zero / denom_zero
-            du_dy[t_zero_mask] = -2 * xyt[t_zero_mask,1] * u_zero / denom_zero
-        
-        # For t>0 points
-        if np.any(~t_zero_mask):
-            denom = 4 * self.D * xyt[~t_zero_mask,2] + self.sigma**2
-            u = self.analytical_solution(xyt[~t_zero_mask])
-            du_dx[~t_zero_mask] = -2 * (xyt[~t_zero_mask,0] - xyt[~t_zero_mask,2] * self.vx) * u / denom
-            du_dy[~t_zero_mask] = -2 * (xyt[~t_zero_mask,1] - xyt[~t_zero_mask,2] * self.vy) * u / denom
-            
-        return du_dx, du_dy
-
     def initial_condition_fn(self, xy):
         """Evaluate initial condition."""
         t = np.zeros((xy.shape[0], 1))
@@ -133,13 +115,13 @@ class Models:
 class MeshData:
     """Class for storing and processing mesh data."""
     
-    def __init__(self, mesh, domain_params, nt):
+    def __init__(self, mesh, domains, nt):
         """Initialize mesh data."""
         self.mesh = mesh
-        self.domain_params = domain_params
+        self.domains = domains
         self.nt = nt
 
-        self.time_discr = np.linspace(0, domain_params.T, nt)
+        self.time_discr = np.linspace(0, domains.T, nt)
 
         # Points
         self.points = mesh.points[:,:2]
@@ -180,16 +162,14 @@ class MeshData:
                     
         self.boundary_triangles = np.array(triangles_with_boundary, dtype=np.int32)
 
+        # Compute characteristic length (max edge length)
         self.diameter = 0
         for v1, v2, v3 in self.triangles:
             p1 = self.points[v1]
             p2 = self.points[v2]
             p3 = self.points[v3]
-            h = max(
-                np.linalg.norm(p1 - p2),
-                np.linalg.norm(p2 - p3),
-                np.linalg.norm(p3 - p1)
-            )
+            h = max(np.linalg.norm(p1 - p2), np.linalg.norm(p2 - p3), np.linalg.norm(p3 - p1))
+            
             if self.diameter < h:
                 self.diameter = h
 
@@ -220,7 +200,7 @@ class MeshData:
     
 
     def _compute_segment_lengths(self):
-        """Compute the length of each segment.        """
+        """Compute the length of each segment."""
         p = self.points
         lengths = []
         for a, b in self.segments:
@@ -229,7 +209,7 @@ class MeshData:
         return np.array(lengths, dtype=np.float64)
 
     def _compute_triangle_areas(self):
-        """Compute the area of each triangle. """
+        """Compute the area of each triangle."""
         p = self.points
         areas = []
         for i, j, k in self.triangles:
@@ -242,112 +222,97 @@ class MeshData:
         return np.array(areas, dtype=np.float64)
 
     def show(self):
-        # Créer la figure
+        """Visualize the mesh."""
         plt.figure(figsize=(10, 8))
         plt.triplot(self.points[:, 0], self.points[:, 1], self.triangles)
         plt.axis('equal')
         plt.grid(True)
-        plt.title('2D Mesh Visualisation')
+        plt.title('2D Mesh Visualization')
         plt.show()
 
+
+class ElementCR:
+    def __init__(self):
+        self.points = np.array([
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0]
+        ])
+        
+        self.midpoints = np.array([
+             [1/2, 1/2],
+             [1/2, 0.0],
+             [0.0, 1/2]
+        ])
+        
+        self.segment_enumeration = np.array([
+            [1, 2],
+            [2, 0],
+            [0, 1]
+        ])
+    
+    def get_shape_functions(self, local_coords):
+        x, y = local_coords
+        return np.array([
+            -1 + 2 * (x + y),
+            1 - 2 * x,
+            1 - 2 * y
+        ])
+    
+    def get_jacobian(self):
+        pass
+    
+    def get_shape_function_derivatives(self):
+        return np.array([
+            [2.0, 2.0],
+            [-2.0, 0.0],
+            [0.0, -2.0]
+        ])
+    
+    def get_stiffness_matrix(self):
+        return np.array([
+            [4.0, -2.0, -2.0],
+            [-2.0, 2.0, 0.0],
+            [-2.0, 0.0, 2.0]
+        ])
+    
+    def get_mass_matrix(self):
+        return np.eye(3) / 6.0
+    
+# class DirichletBC:
+#     """Homogenuous boundary condition"""
+#     def __init__(self, boundary_dofs):
+#         self.boundary_dofs = boundary_dofs
+    
+#     def apply(self, S, F):
+#         """"Apply Dirichlet BC using the penalty method"""
+#         for seg in self.boundary_dofs:
+            
+            
 
 class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Methods
     """Implementation of Backward Euler scheme with Crouzeix-Raviart FEM."""
     
-    def __init__(self, domain_params, model_params, mesh_data, use_quadrature=False):
+    def __init__(self, domains, model_params, mesh_data, element, time_scheme_order=1):
         """Initialize solver."""
-        self.domain_params = domain_params
+        self.domains = domains
         self.model_params = model_params
         self.mesh_data = mesh_data
-        self.dt = domain_params.T / (mesh_data.nt - 1)
-
-        # Reference Matrices
-        self.triangle_grad_phis = np.array([
-            [2.0, 2.0],
-            [-2.0, 0.0],
-            [0.0, -2.0]
-        ], dtype=np.float64)
-
-        # ==== Quadrature d'ordre 5 sur l'élément de référence ====
-        if use_quadrature:
-            self._compute_reference_element_matrices_order5()
-        else:
-            self._compute_reference_element_matrices()
-
-    def _compute_reference_element_matrices(self):
-        # ==== Stiffness Matrix ====
-            self.reference_stiffness = np.array([
-                [4.0, -2.0, -2.0],
-                [-2.0, 2.0, 0.0],
-                [-2.0, 0.0, 2.0]
-            ], dtype=np.float64)
+        self.dt = domains.T / (mesh_data.nt - 1)
+        self.element = element
+        self._compute_reference_element_matrices()
+        self.time_scheme_order = time_scheme_order
         
-            # ==== Mass Matrix =====
-            self.reference_mass = np.array([
-                [1, 0, 0],
-                [1, 1, 0],
-                [0, 0, 1]
-            ]) / 6.0
-
-    def _compute_reference_element_matrices_order5(self):
-        """Calcule mass, stiffness et advection locales via une quadrature de degré 5."""
-        import numpy as np, math
-        # Règle de Hammer-Stroud d'ordre 5 sur triangle de référence (0,0),(1,0),(0,1)
-        sqrt15 = math.sqrt(15.0)
-        # barycentriques transformées en (x,y)
-        a1 = (6 + sqrt15) / 21
-        b1 = (9 - 2*sqrt15) / 21
-        a2 = (6 - sqrt15) / 21
-        b2 = (9 + 2*sqrt15) / 21
-        pts = np.array([
-            [1/3,    1/3   ],
-            [a1,     a1    ],
-            [a1,     b1    ],
-            [b1,     a1    ],
-            [a2,     a2    ],
-            [a2,     b2    ],
-            [b2,     a2    ]
-        ])
-        wts = np.array([
-            9/80,
-            (155+sqrt15)/2400,
-            (155+sqrt15)/2400,
-            (155+sqrt15)/2400,
-            (155-sqrt15)/2400,
-            (155-sqrt15)/2400,
-            (155-sqrt15)/2400
-        ])
-        # Fonctions de forme CR sur l'élément de référence
-        phis = [
-            lambda x,y: -1 + 2*x + 2*y,
-            lambda x,y:  1 - 2*x,
-            lambda x,y:  1 - 2*y
-        ]
-        grads = np.array([[2,2],[-2,0],[0,-2]], dtype=float)
-
-        # Initialisation
-        M_ref = np.zeros((3,3))
-        K_ref = np.zeros((3,3))
-        A_ref = np.zeros((3,3))
-        vx, vy = self.model_params.vx, self.model_params.vy
-
-        # Boucle de quadrature
-        for (xi, yi), w in zip(pts, wts):
-            phi_vals = np.array([phi(xi, yi) for phi in phis])
-            for i in range(3):
-                for j in range(3):
-                    # masse
-                    M_ref[i,j] += w * phi_vals[i] * phi_vals[j]
-                    # rigidité (stiffness)
-                    K_ref[i,j] += w * np.dot(grads[i], grads[j])
-                    # advection
-                    v_dot_grad = vx*grads[i,0] + vy*grads[i,1]
-                    A_ref[i,j] += w * v_dot_grad * phi_vals[j]
-
-        # Stockage
-        self.reference_mass      = M_ref
-        self.reference_stiffness = K_ref
-        self.reference_advection = A_ref
+    def _compute_reference_element_matrices(self):
+        """Compute reference element matrices analytically."""
+        # Stiffness Matrix for gradient dot product
+        self.reference_stiffness = self.element.get_stiffness_matrix()
+        
+        # Mass Matrix for piecewise linear functions
+        self.reference_mass = self.element.get_mass_matrix()
+        
+        # Gradient of Shape Functions
+        self.triangle_grad_phis = self.element.get_shape_function_derivatives()
 
     def compute_stiffness_CR(self, tri_idx):
         """Compute local stiffness matrix for Crouzeix-Raviart element."""
@@ -355,56 +320,94 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
             self.mesh_data.triangles[tri_idx]
         ]
 
-        # compute jacobian of the transformation
-        A_tri = (vertices[1:, :] - vertices[0, :]).T
-
-        # compute the jacobian's inverse
-        B_tri = np.linalg.solve(A_tri, np.eye(2))
+        # Compute the Jacobian of the transformation
+        J = np.zeros((2, 2))
+        J[:, 0] = vertices[1, :] - vertices[0, :]
+        J[:, 1] = vertices[2, :] - vertices[0, :]
         
-        # compute B_T^T * B_T for the transformed gradients
+        # Determinant of Jacobian (2x area)
+        det_J = abs(J[0, 0] * J[1, 1] - J[0, 1] * J[1, 0])
+        
+        # Inverse of Jacobian
+        J_inv = np.array([
+            [J[1, 1], -J[0, 1]],
+            [-J[1, 0], J[0, 0]]
+        ]) / det_J
+        
+        # Transform reference gradients to physical gradients
+        # B_tri = J_inv.T
+        # BTB = B_tri @ B_tri.T
+        B_tri = J_inv
         BTB = B_tri.T @ B_tri
-
-        # compute local stiffness matrix for current element
-        K_local = self.triangle_grad_phis @ BTB @ self.triangle_grad_phis.T        
+        
+        # Local stiffness matrix
+        K_local = self.triangle_grad_phis @ BTB @ self.triangle_grad_phis.T
         return self.model_params.D * self.mesh_data.triangle_areas[tri_idx] * K_local
+
 
     def compute_mass_CR(self, tri_idx):
         """Compute local mass matrix for Crouzeix-Raviart element."""
         return self.reference_mass * 2 * self.mesh_data.triangle_areas[tri_idx]
-
+    
     def compute_advection_CR(self, tri_idx):
-        # 1) géométrie
-        verts = self.mesh_data.points[self.mesh_data.triangles[tri_idx]]
-        A_tri = (verts[1:] - verts[0]).T
-        B_tri = np.linalg.solve(A_tri, np.eye(2))        # J^{-1}
+        #1/ géométrie
+        vertices = self.mesh_data.points[
+            self.mesh_data.triangles[tri_idx]
+        ]
+        
+        # Compute the Jacobian of the transformation
+        J = np.zeros((2, 2))
+        J[:, 0] = vertices[1, :] - vertices[0, :]
+        J[:, 1] = vertices[2, :] - vertices[0, :]
+        
+        # Determinant of Jacobian (2x area)
+        det_J = abs(J[0, 0] * J[1, 1] - J[0, 1] * J[1, 0])
+        
+        # Inverse of Jacobian
+        B_tri = np.array([
+            [J[1, 1], -J[0, 1]],
+            [-J[1, 0], J[0, 0]]
+        ]) / det_J
+
         # gradient physique (3×2)
         grad_phi = (B_tri.T @ self.triangle_grad_phis.T).T
-    
-        # 2) terme ∫ φ_i (v·∇φ_j) dx = (area/3) * (v·∇φ_j)
+
+        #2/ terme ∫ φ_i (v·∇φ_j) dx = (area/3) * (v·∇φ_j)
         area     = self.mesh_data.triangle_areas[tri_idx]
-        phi_int  = np.ones(3) * (area / 3.0)             # φ intégrée
         v_vec    = np.array([self.model_params.vx, self.model_params.vy])
+        phi_int  = np.ones(3) * (area / 6.0)             # φ intégrée
         v_dot_gr = grad_phi @ v_vec                      # (3,)
         A_loc    = np.outer(phi_int, v_dot_gr)           # (3×3)
         return 2 * A_loc
-
         
+        # A_loc = np.zeros((3,3))
+        # for i in range(3):
+        #     int_phi_i = 1 / 6.0
+        #     for j in range(3):
+        #         grad_phi_j = self.triangle_grad_phis[j]
+        #         v_dot_gr = v_vec.dot(grad_phi_j)
+        #         A_loc[j, i] = (2 * area) * v_dot_gr.dot(B_tri) * int_phi_i
+        # return A_loc
+        
+        
+    
     def build_global_matrices(self):
-        """Build global mass, stiffness and advection matrices via triplet assembly."""
+        """Build global mass, stiffness and advection matrices"""
         n_seg = self.mesh_data.number_of_segments
-        # listes de triplets pour chacune des matrices
+        
+        #Triplet lists for each matrix
         I_m, J_m, V_m = [], [], []
         I_k, J_k, V_k = [], [], []
         I_a, J_a, V_a = [], [], []
-
-        # boucle sur chaque triangle
+        
+        #Loop over through each triangle
         for tri_idx in range(self.mesh_data.number_of_triangles):
-            segs = self.mesh_data.triangle_to_segments[tri_idx].tolist()  # [i0,i1,i2]
+            segs = self.mesh_data.triangle_to_segments[tri_idx]
             M_loc = self.compute_mass_CR(tri_idx)
             K_loc = self.compute_stiffness_CR(tri_idx)
             A_loc = self.compute_advection_CR(tri_idx)
-
-            # assemble local -> global
+            
+            # Assemble local -> global
             for a in range(3):
                 i = segs[a]
                 for b in range(3):
@@ -412,113 +415,87 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
                     I_m.append(i); J_m.append(j); V_m.append(M_loc[a, b])
                     I_k.append(i); J_k.append(j); V_k.append(K_loc[a, b])
                     I_a.append(i); J_a.append(j); V_a.append(A_loc[a, b])
-
-        # construction des sparse CSR
-        self.global_mass      = csr_matrix((V_m, (I_m, J_m)), shape=(n_seg, n_seg))
+        
+        # Construct CSR sparse matrices
+        self.global_mass = csr_matrix((V_m, (I_m, J_m)), shape=(n_seg, n_seg))
         self.global_stiffness = csr_matrix((V_k, (I_k, J_k)), shape=(n_seg, n_seg))
         self.global_advection = csr_matrix((V_a, (I_a, J_a)), shape=(n_seg, n_seg))
-
-        # build system matrix once (sans BC)
-        self.base_system = self.global_mass.copy() / self.dt \
-                         + self.global_advection       \
-                         + self.global_stiffness
+        
+        #Build system matrix without BC
+        if self.time_scheme_order == 1:
+            self.base_system = self.global_mass + self.dt * (self.global_stiffness + self.global_advection)
+        elif self.time_scheme_order == 2:
+            self.base_system = self.global_mass + 0.5 * self.dt * (self.global_stiffness + self.global_advection)
+        else:
+            raise ValueError(f"Order {self.time_scheme_order} numerical scheme not implemented")
 
     
     def set_initial_condition(self):
-        """
-        Set initial condition.
-        """
         self.u_prev = self.model_params.initial_condition_fn(self.mesh_data.midpoints)
-
-    def set_source_term(self, tt):
-        # Quadrature d'ordre 5 sur [0, 1] pour segment
-        quad_pts_1d = np.array([
-            0.5 - np.sqrt(5 + 2*np.sqrt(10/7))/6,
-            0.5 - np.sqrt(5 - 2*np.sqrt(10/7))/6,
-            0.5,
-            0.5 + np.sqrt(5 - 2*np.sqrt(10/7))/6,
-            0.5 + np.sqrt(5 + 2*np.sqrt(10/7))/6
-        ])
-
-        quad_wts_1d = np.array([
-            0.2369268851,
-            0.4786286705,
-            0.5688888889,
-            0.4786286705,
-            0.2369268851
-        ])
-
-        # 1) Second membre non modifié : M/dt * u^n
-        b = self.global_mass.dot(self.u_prev) / self.dt
-
-        # 2) Copier base_system et passer en LIL pour poser les BC
+        
+    def set_boundary_fn(self, t):
+        # self.mesh_data.midpoints
+        n_bc = self.mesh_data.boundary_segments.shape[0]
+        
+        bc = np.zeros(self.mesh_data.midpoints.shape[0])
+        
+        t_array = t * np.ones((n_bc, 1))
+        
+        xyt = np.hstack((self.mesh_data.midpoints[self.mesh_data.boundary_segments], t_array))
+        
+        # print(self.model_params.analytical_solution(xyt).shape)
+        # print(bc.shape)
+        bc[self.mesh_data.boundary_segments] = self.model_params.analytical_solution(xyt)
+        
+        return bc
+        
+        
+    def set_source_term(self):
+        if self.time_scheme_order == 1:
+            b = self.global_mass.dot(self.u_prev)
+        elif self.time_scheme_order == 2:
+            b = (self.global_mass - 0.5 * self.dt * (self.global_stiffness + self.global_advection)).dot(self.u_prev)
+        else:
+            raise ValueError(f"Order {self.time_scheme_order} numerical scheme not implemented")
+        
+        # Apply boundary condition
         A = self.base_system.copy().tolil()
-
-        # 3) Imposer Dirichlet sur chaque segment frontière
-
+        
         for seg in self.mesh_data.boundary_segments:
-            # Récupération des extrémités du segment
-            p0, p1 = self.mesh_data.points[
-                self.mesh_data.segments[seg],:
-            ]  # (2,) chacun
-            
-
-            # Coordonnées physiques des points de quadrature sur le segment
-            seg_pts = np.outer(1 - quad_pts_1d, p0) + np.outer(quad_pts_1d, p1)  # (5, 2)
-            xyt = np.hstack((seg_pts, np.full((5,1), tt)))  # (5, 3)
-
-            # Évaluer la condition de Dirichlet au temps t
-            vals = np.array([self.model_params.analytical_solution(pt.reshape(1,3)).item() for pt in xyt])
-            
-            # Intégrale approchée sur le segment (longueur * somme pondérée)
-            seg_len = np.linalg.norm(p1 - p0)
-            bc_val = np.dot(vals, quad_wts_1d) * seg_len  # approximation intégrale
-            
-            # Normaliser par la longueur du segment pour obtenir une moyenne pondérée
-            bc_val /= np.sum(quad_wts_1d) * seg_len
-
-            # Imposer la condition comme avant
             A.rows[seg] = [seg]
             A.data[seg] = [1.0]
-            b[seg] = bc_val
+            b[seg] = 0.0
+            
+        return A.tocsr(), b        
         
-        return A.tocsr(), b
-
     def solve(self):
-        """  
-        Schéma de Backward Euler + FEM CR :
-        - assemble une fois base_system via build_global_matrices()
-        - à chaque pas : set_source_term(t) → (A,b), puis spsolve
-        """
-        # 1) Initial condition and storage
-        self.set_initial_condition()  
-        n_steps    = self.mesh_data.nt
+        # 1. Initial condition and storage
+        self.set_initial_condition()
+        n_steps = self.mesh_data.nt
         n_segments = self.mesh_data.number_of_segments
         self.solutions = np.zeros((n_steps, n_segments))
         self.solutions[0, :] = self.u_prev
-
-        # 2) Assemble global matrices and base system (sans BC)
-        self.build_global_matrices()  
-        # build_global_matrices doit avoir défini self.base_system
-
-        # 3) Time‐stepping loop
+        
+        # 2. Assemble global matrices and base system 
+        self.build_global_matrices()
+        
+        # 3. Time-stepping loop
         start = time.time()
-        for step in tqdm(range(1, n_steps), desc="Time‐stepping"):
+        for step in tqdm(range(1, n_steps), desc= "Time-stepping"):
             t = step * self.dt
-
-            # récupérer A, b au pas t
-            A, b = self.set_source_term(t)
-
-            # résoudre (M/dt + A + K) u^{n+1} = b
+            
+            #get A, b at step t
+            A, b = self.set_source_term()
+            
+            #
             self.u_prev = spsolve(A, b)
-            self.solutions[step, :] = self.u_prev
-
-        # 4) Reporting
+            
+            #Seting boundary condition by lifting
+            self.solutions[step, :] = self.u_prev + self.set_boundary_fn(t)
         self.solve_time = time.time() - start
         print(f"Solve completed in {self.solve_time:.2f}s")
-
+        
         return self.solutions
-
     
     def compute_errors(self):
         """Compute errors between numerical and analytical solutions."""
@@ -623,7 +600,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         """Plot error evolution over time."""
         os.makedirs(save_dir, exist_ok=True)
         
-        time_values = np.linspace(0, self.domain_params.T, self.mesh_data.nt)
+        time_values = np.linspace(0, self.domains.T, self.mesh_data.nt)
         
         plt.figure(figsize=(10, 6))
         plt.semilogy(time_values, errors['l2_errors'], 'b-', label="L2 Error")
@@ -735,7 +712,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         error_values = vertex_values - analytical_vertex_values
         
         # Create subplot
-        fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+        fig, axs = plt.subplots(1, 2, figsize=(18, 6))
         
         # Plot numerical solution
         triang = mtri.Triangulation(points[:, 0], points[:, 1], triangles)
@@ -752,188 +729,55 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         axs[1].set_ylabel("y")
         fig.colorbar(cntr2, ax=axs[1])
         
-        # Plot error
-        cntr3 = axs[2].tricontourf(triang, error_values, 20, cmap="coolwarm", 
-                                   norm=plt.Normalize(-np.max(np.abs(error_values)), 
-                                                    np.max(np.abs(error_values))))
-        axs[2].set_title(f"Error at t = {t:.3f}")
-        axs[2].set_xlabel("x")
-        axs[2].set_ylabel("y")
-        fig.colorbar(cntr3, ax=axs[2])
+        # # Plot error
+        # cntr3 = axs[2].tricontourf(triang, error_values, 20, cmap="coolwarm", 
+        #                            norm=plt.Normalize(-np.max(np.abs(error_values)), 
+        #                                             np.max(np.abs(error_values))))
+        # axs[2].set_title(f"Error at t = {t:.3f}")
+        # axs[2].set_xlabel("x")
+        # axs[2].set_ylabel("y")
+        # fig.colorbar(cntr3, ax=axs[2])
         
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/solution_t{time_index}.png", dpi=300)
+        plt.savefig(f"{save_dir}/solution_t{time_index}_interpolated.png", dpi=300)
+        plt.savefig(f"{save_dir}/solution_t{time_index}_interpolated.pdf", dpi=300)
         plt.close()
-
-
-def convergence_analysis(domain_params, model_params, domain_size, mesh_sizes, nt_values, save_dir="results"):
-    """Perform convergence analysis."""
-    # Create directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
-    
-    # Initialize results storage
-    results = []
-    
-    # Loop over mesh sizes and time steps
-    for mesh_size in mesh_sizes:
-        for nt in nt_values:
-            print(f"Running with mesh size {mesh_size} and {nt} time steps")
-            
-            # Create mesh
-            mesh_file = create_mesh(n_points_per_axis=mesh_size, domain_size=domain_size)
-            mesh = meshio.read(mesh_file)
-            
-            # Setup mesh data
-            mesh_data = MeshData(mesh, domain_params, nt)
-            
-            # Initialize solver
-            solver = BESCRFEM(domain_params, model_params, mesh_data)
-            
-            # Solve
-            solver.solve()
-            
-            # Compute errors
-            errors = solver.compute_errors()
-            
-            # Save results
-            result = {
-                'mesh_size': mesh_size,
-                'nt': nt,
-                'h': (2 * domain_size) / (mesh_size - 1),  # Approximate element size
-                'dt': domain_params.T / (nt - 1),
-                'l2_error': errors['final_l2_error'],
-                'linf_error': errors['final_linf_error'],
-                'compute_time': solver.solve_time
-            }
-            results.append(result)
-            
-            # Plot final solution
-            solver.plot_solution(save_dir=f"{save_dir}/mesh{mesh_size}_nt{nt}")
-            
-            # Plot error evolution
-            solver.plot_error_evolution(errors, save_dir="results")
-
-
-class BESCRFEMUpwind(BESCRFEM):
-    """
-    Sous-classe de BESCRFEM introduisant plusieurs schémas d'upwind pour la convection.
-
-    Paramètres supplémentaires:
-    - upwind_type: 'centered' (pas d'upwind), 'edge_upwind' (flux upstream), 'SUPG' (Petrov-Galerkin)
-    """
-    def __init__(self, domain_params, model_params, mesh_data, upwind_type='edge_upwind'):
-        super().__init__(domain_params, model_params, mesh_data)
-        self.upwind_type = upwind_type.lower()
-
-    def compute_advection_CR(self, tri_idx):
-        if self.upwind_type == 'centered':
-            return super().compute_advection_CR(tri_idx)
-        elif self.upwind_type == 'edge_upwind':
-            return self._compute_edge_upwind(tri_idx)
-        elif self.upwind_type == 'supg':
-            return self._compute_supg(tri_idx)
-        else:
-            raise ValueError(f"Unknown upwind_type: {self.upwind_type}")
-
-    def _compute_edge_upwind(self, tri_idx):
-        """
-        Upwind simple par flux sur chaque arête (first-order upwind).
-        Contribution locale diagonale: sum_e max(v·n_e,0)*|e|.
-        """
-        pts = self.mesh_data.points[self.mesh_data.triangles[tri_idx]]  # (3,2)
-        v = np.array([self.model_params.vx, self.model_params.vy])
-        # liste des arêtes locales (indice i correspond à arête opposée au noeud i)
-        edges = [(pts[1], pts[2]), (pts[2], pts[0]), (pts[0], pts[1])]
-        A_loc = np.zeros((3,3))
-        for i, (p, q) in enumerate(edges):
-            # vecteur arête
-            e = q - p
-            # normal non orienté
-            n = np.array([e[1], -e[0]])
-            # normalisation par longueur
-            length = np.linalg.norm(e)
-            if length == 0:
-                continue
-            n_unit = n / length
-            # flux positif (inflow si v·n>0)
-            flux = max(np.dot(v, n_unit), 0.0)
-            # upwind matrix diag
-            A_loc[i,i] += flux * length
-        return A_loc
-
-    def _compute_supg(self, tri_idx):
-        """
-        Stabilisation SUPG: on ajoute tau * (v·∇φ_i)(v·∇φ_j) * |K|.
-        tau = h / (2|v|), avec h = 2*area / perimeter
-        """
-        # jacobien et aire
-        verts = self.mesh_data.points[self.mesh_data.triangles[tri_idx]]
-        A_tri = (verts[1:] - verts[0]).T
-        area = self.mesh_data.triangle_areas[tri_idx]
-        # calcul de h via périmètre
-        perim = 0.0
-        for a,b in [(1,2),(2,0), (0,1)]:
-            perim += np.linalg.norm(verts[b] - verts[a])
-        h = 2*area / perim if perim>0 else 0.0
-        v = np.array([self.model_params.vx, self.model_params.vy])
-        vnorm = np.linalg.norm(v)
-        tau = h / (2*vnorm) if vnorm>0 else 0.0
-        # gradients physiques
-        B_tri = np.linalg.solve(A_tri, np.eye(2))
-        grad_phi = self.triangle_grad_phis @ B_tri
-        # vecteur v·grad pour chaque base
-        v_dot_grad = grad_phi.dot(v)
-        # terme SUPG local
-        A_supg = tau * area * np.outer(v_dot_grad, v_dot_grad)
-        # ajouter terme centré
-        A_centered = super().compute_advection_CR(tri_idx)
-        return A_centered + A_supg
-
-    def build_global_matrices(self):
-        """Assemble global_mass, global_stiffness, global_advection et base_system"""
-        n_seg = self.mesh_data.number_of_segments
-        I_m, J_m, V_m = [], [], []
-        I_k, J_k, V_k = [], [], []
-        I_a, J_a, V_a = [], [], []
-        for t in range(self.mesh_data.number_of_triangles):
-            segs = self.mesh_data.triangle_to_segments[t].tolist()
-            Mloc = self.compute_mass_CR(t)
-            Kloc = self.compute_stiffness_CR(t)
-            Aloc = self.compute_advection_CR(t)
-            for i in range(3):
-                for j in range(3):
-                    I_m.append(segs[i]); J_m.append(segs[j]); V_m.append(Mloc[i,j])
-                    I_k.append(segs[i]); J_k.append(segs[j]); V_k.append(Kloc[i,j])
-                    I_a.append(segs[i]); J_a.append(segs[j]); V_a.append(Aloc[i,j])
-        self.global_mass      = csr_matrix((V_m, (I_m, J_m)), shape=(n_seg, n_seg))
-        self.global_stiffness = csr_matrix((V_k, (I_k, J_k)), shape=(n_seg, n_seg))
-        self.global_advection = csr_matrix((V_a, (I_a, J_a)), shape=(n_seg, n_seg))
-        self.base_system = self.global_mass.copy()/self.dt + self.global_advection + self.global_stiffness
-
-if __name__ == "__main__":
+        print(f"Saved at {save_dir}/solution_t{time_index}_interpolated.png/pdf")
+        
+        
+if __name__ == '__main__':
     domain_size = 20.0
     Lx = Ly = domain_size  # Half-size of the domain
     T = 10.0  # End time
     D = 0.1  # Diffusion coefficient (small value leads to advection-dominated flow)
     vx, vy = 1.0, 0.5  # Velocity field
     sigma = 0.1
-        
+
     # Create mesh with 30 points per axis (higher resolution)
-    mesh_file = create_mesh(64, domain_size=domain_size)
+    mesh_file = create_mesh(128, domain_size=domain_size)
     mesh = meshio.read(mesh_file)
-    
+
     # Setup parameters
-    domain_params = DomainParams(Lx=Lx, Ly=Ly, T=T)
+    domains = Domains(Lx=Lx, Ly=Ly, T=T)
     model_params = Models(vx=vx, vy=vy, D=D, sigma=sigma)
-    n_steps = 128
-    mesh_data = MeshData(mesh, domain_params, nt=n_steps)  # More time steps for accuracy
-    
+    n_steps = 256
+    mesh_data = MeshData(mesh, domains, nt=n_steps)  # More time steps for accuracy
+
     # mesh_data.show()
     print(mesh_data.number_of_segments)
-    
-    bescrfem = BESCRFEM(domain_params, model_params, mesh_data, use_quadrature=True)
-    bescrfem.solve()
-    
-    errors = bescrfem.compute_errors()
-    print(f"L2 Error: {errors['final_l2_error']:0.4f}")
-    print(f"Max Error: {errors['final_linf_error']:0.4f}")
+
+
+    #Type of finite element methods
+    cr_element = ElementCR()
+
+    solver1 = BESCRFEM(domains, model_params, mesh_data, cr_element, 1)
+
+    solutions1 = solver1.solve()
+
+    errors1 = solver1.compute_errors()
+    print(f"L2 Error: {errors1['final_l2_error']:0.4f}")
+
+    print(f"Max Error: {errors1['final_linf_error']:0.4f}")
+
+    solver1.plot_interpoleted_solution()
+    solver1.plot_solution()
