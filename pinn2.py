@@ -320,7 +320,7 @@ def evaluate_model(model, domain, T_max, resolution=50):
     X, Y = np.meshgrid(x, y)
     
     # Time points to visualize
-    time_points = [0.0, T_max/4, T_max/2, 3*T_max/4, T_max]
+    time_points = [T_max] # [0.0, T_max/4, T_max/2, 3*T_max/4, T_max]
     
     errors = []
     
