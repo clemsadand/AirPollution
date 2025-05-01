@@ -556,7 +556,7 @@ def main():
     
     # Evaluate and visualize results
     plot_loss_history(history)
-    errors = evaluate_model(model, domain, time_range)
+    errors = evaluate_model(model, domain, time_range[1])
     
     # Compute convergence metrics
     errors_l2, errors_linf = compute_convergence_metrics(model, domain, time_range)
