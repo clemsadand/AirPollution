@@ -320,7 +320,7 @@ def evaluate_model(model, domain, T_max, resolution=50):
     X, Y = np.meshgrid(x, y)
     
     # Time points to visualize
-    time_points = [0.0, T_max/4, T_max/2, 3*T_max/4, T_max][-1]
+    time_points = [0.0, T_max/4, T_max/2, 3*T_max/4, T_max]
     
     errors = []
     
@@ -365,6 +365,7 @@ def evaluate_model(model, domain, T_max, resolution=50):
     fig.tight_layout()
     plt.colorbar(im, ax=axs.ravel().tolist())
     plt.savefig(f"solution_{t_val}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"solution_{t_val}.pdf", dpi=300, bbox_inches='tight')
     plt.close(fig)
     
     return errors
@@ -555,7 +556,7 @@ def main():
     
     # Evaluate and visualize results
     plot_loss_history(history)
-    errors = evaluate_model(model, domain, time_range[1])
+    errors = evaluate_model(model, domain, time_range)
     
     # Compute convergence metrics
     errors_l2, errors_linf = compute_convergence_metrics(model, domain, time_range)
