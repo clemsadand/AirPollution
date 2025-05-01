@@ -346,15 +346,15 @@ def evaluate_model(model, domain, T_max, resolution=50):
         # errors.append(error_mean)
         
         # Plot results
-        axs[i, 0].contourf(X, Y, c_pred, 50, cmap='jet')
-        axs[i, 0].set_title(f'PINN prediction at t = {t_val:.2f}')
-        axs[i, 0].set_xlabel('x (km)')
-        axs[i, 0].set_ylabel('y (km)')
+        axs[0].contourf(X, Y, c_pred, 50, cmap='jet')
+        axs[0].set_title(f'PINN prediction at t = {t_val:.2f}')
+        axs[0].set_xlabel('x (km)')
+        axs[0].set_ylabel('y (km)')
         
-        im = axs[i, 1].contourf(X, Y, c_analytical, 50, cmap='jet')
-        axs[i, 1].set_title(f'Analytical solution at t = {t_val:.2f}')
-        axs[i, 1].set_xlabel('x (km)')
-        axs[i, 1].set_ylabel('y (km)')
+        im = axs[1].contourf(X, Y, c_analytical, 50, cmap='jet')
+        axs[1].set_title(f'Analytical solution at t = {t_val:.2f}')
+        axs[1].set_xlabel('x (km)')
+        axs[1].set_ylabel('y (km)')
         
         # axs[i, 2].contourf(X, Y, error_relative, 50, cmap='viridis')
         # axs[i, 2].set_title(f'Relative error at t = {t_val:.2f}, Mean: {error_mean:.6f}')
