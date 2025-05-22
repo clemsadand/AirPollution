@@ -383,6 +383,7 @@ def plot_loss_history(history):
     plt.title('Training Loss History')
     plt.legend()
     plt.grid(True, which="both", ls="--")
+    plt.savefig(f"loss_history.pdf", dpi=300)
     plt.tight_layout()
     plt.show()
 
