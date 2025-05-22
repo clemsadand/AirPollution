@@ -226,7 +226,8 @@ class MeshData:
         plt.figure(figsize=(10, 8))
         plt.triplot(self.points[:, 0], self.points[:, 1], self.triangles)
         plt.axis('equal')
-        plt.grid(True)
+        plt.grid(False)
+        plt.savefig("mesh_visualition.pdf", dpi=300)
         plt.title('2D Mesh Visualization')
         plt.show()
 
