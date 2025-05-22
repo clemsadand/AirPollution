@@ -9,6 +9,22 @@ import time
 from tqdm import tqdm
 from pyDOE import lhs  # Latin Hypercube Sampling
 
+# Sine activation 
+class Sine(nn.Module):
+    def forward(self, x):
+        return torch.sin(x)
+
+#self.activation = Sine()
+
+# Swish activation
+class Swish(nn.Module):
+    def forward(self, x):
+        return x * torch.sigmoid(x)
+
+# self.activation = Swish()
+
+
+
 # Set random seed for reproducibility
 torch.manual_seed(1234)
 np.random.seed(1234)
@@ -18,7 +34,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 class PINN(nn.Module):
-    def __init__(self, layers, D, v):
+    def __init__(self, layers, D, v, activation="tanh"):
         """
         Initialize the Physics-Informed Neural Network
         
@@ -33,7 +49,13 @@ class PINN(nn.Module):
         self.sigma = 1.0  # Initial condition parameter
         
         # Build the neural network
-        self.activation = nn.Tanh()
+        if activation == "tanh":
+            self.activation = nn.Tanh()
+        elif activation == "sine":
+            self.activation = Sine()
+        else:
+            self.activation = Swish()
+            
         self.loss_function = nn.MSELoss(reduction='mean')
         
         # Create layers
