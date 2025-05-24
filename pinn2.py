@@ -452,7 +452,7 @@ def evaluate_model(model, domain, T_max, resolution=50):
     return errors
 
 
-def plot_loss_history(history):
+def plot_loss_history(history, f_name=loss_history.pdf):
     """Plot training loss history"""
     plt.figure(figsize=(10, 6))
     plt.semilogy(history['total_loss'], label='Total Loss')
@@ -464,7 +464,7 @@ def plot_loss_history(history):
     plt.title('Training Loss History')
     plt.legend()
     plt.grid(True, which="both", ls="--")
-    plt.savefig(f"loss_history.pdf", dpi=300)
+    plt.savefig(f_name, dpi=500)
     plt.tight_layout()
     plt.show()
 
