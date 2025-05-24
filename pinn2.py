@@ -151,6 +151,49 @@ class PINN(nn.Module):
         v_x, v_y = self.v
         return c_t + v_x * c_x + v_y * c_y - self.D * (c_xx + c_yy)
 
+# Early Stopping Class
+class EarlyStopping:
+    def __init__(self, patience=100, min_delta=1e-6, restore_best_weights=True):
+        """
+        Early stopping utility to stop training when loss stops improving.
+        
+        Args:
+            patience: Number of epochs to wait before stopping after loss stops improving
+            min_delta: Minimum change in loss to qualify as an improvement
+            restore_best_weights: Whether to restore model weights from the best epoch
+        """
+        self.patience = patience
+        self.min_delta = min_delta
+        self.restore_best_weights = restore_best_weights
+        self.best_loss = float('inf')
+        self.counter = 0
+        self.best_weights = None
+        
+    def __call__(self, val_loss, model):
+        """
+        Check if training should stop and update best weights.
+        
+        Args:
+            val_loss: Current validation loss
+            model: The model being trained
+            
+        Returns:
+            True if training should stop, False otherwise
+        """
+        if val_loss < self.best_loss - self.min_delta:
+            self.best_loss = val_loss
+            self.counter = 0
+            if self.restore_best_weights:
+                self.best_weights = model.state_dict().copy()
+        else:
+            self.counter += 1
+            
+        return self.counter >= self.patience
+    
+    def restore_weights(self, model):
+        """Restore the best weights to the model"""
+        if self.best_weights is not None:
+            model.load_state_dict(self.best_weights)
 
 def lhs_sampling(n_samples, domain, time_range=None):
     """
@@ -240,7 +283,9 @@ def sample_boundary_points(n_samples, domain, time_range):
     return t_bc, x_bc, y_bc
 
 
-def train_pinn(model, domain, time_range, batch_sizes, learning_rate, epochs, lambda_weights):
+# def train_pinn(model, domain, time_range, batch_sizes, learning_rate, epochs, lambda_weights):
+def train_pinn(model, domain, time_range, batch_sizes, learning_rate, epochs, lambda_weights, 
+               early_stopping_patience=1000, early_stopping_min_delta=1e-6):
     """
     Train the PINN model using Latin Hypercube sampling for collocation points
     
@@ -252,9 +297,18 @@ def train_pinn(model, domain, time_range, batch_sizes, learning_rate, epochs, la
         learning_rate: Learning rate for optimizer
         epochs: Number of training epochs
         lambda_weights: Dictionary with weights for each loss term
+        early_stopping_patience: Number of epochs to wait before early stopping
+        early_stopping_min_delta: Minimum change in loss for early stopping
     """
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=500, factor=0.5, verbose=True)
+    
+    # Initialize early stopping
+    early_stopping = EarlyStopping(
+        patience=early_stopping_patience, 
+        min_delta=early_stopping_min_delta,
+        restore_best_weights=True
+    )
     
     # Create history to track losses
     history = {'total_loss': [], 'pde_loss': [], 'ic_loss': [], 'bc_loss': []}
@@ -311,11 +365,16 @@ def train_pinn(model, domain, time_range, batch_sizes, learning_rate, epochs, la
         history['ic_loss'].append(ic_loss.item())
         history['bc_loss'].append(bc_loss.item())
         
-        # # Print progress
-        # if (epoch + 1) % 100 == 0:
-        #     elapsed = time.time() - start_time
-        #     print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss.item():.6f}, Time: {elapsed:.2f}s")
-        #     print(f"  PDE Loss: {pde_loss.item():.6f}, IC Loss: {ic_loss.item():.6f}, BC Loss: {bc_loss.item():.6f}")
+        # Check early stopping
+        if early_stopping(total_loss.item(), model):
+            print(f"\nEarly stopping triggered at epoch {epoch+1}")
+            print(f"Best loss: {early_stopping.best_loss:.6f}")
+            break
+    
+    # Restore best weights if early stopping was used
+    if early_stopping.restore_best_weights:
+        early_stopping.restore_weights(model)
+        print("Restored best model weights")
     
     end_time = time.time()
     training_time = end_time - start_time
