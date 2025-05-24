@@ -466,7 +466,7 @@ def plot_loss_history(history, f_name=loss_history.pdf):
     plt.grid(True, which="both", ls="--")
     plt.savefig(f_name, dpi=500)
     plt.tight_layout()
-    plt.show()
+    plt.close()
 
 
 def plot_collocation_points(domain, time_range, batch_sizes):
