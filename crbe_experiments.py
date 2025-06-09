@@ -8,10 +8,15 @@ import psutil
 import torch
 import pandas as pd
 import gc
-
 import torch
+
+import os
+
 torch.manual_seed(1234)
 np.random.seed(1234)
+
+os.makedirs("experimental_results", exist_ok=True)
+
 
 # --- Problem Setup ---
 domain_size = 20.0
@@ -84,5 +89,5 @@ for i, mesh_size in enumerate(mesh_sizes):
 
 # --- Results as DataFrame ---
 df_crbe = pd.DataFrame(crbe_results)
-df_crbe.to_csv("df_crbe_training_results.csv")
+df_crbe.to_csv("experimental_results/df_crbe_training_results.csv")
 df_crbe
