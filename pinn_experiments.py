@@ -80,7 +80,7 @@ for i in range(len(mesh_sizes)):
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
     
     train_time = time.time() - start_time
 
