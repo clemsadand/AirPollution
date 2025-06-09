@@ -123,13 +123,13 @@ class Domain:
 class MeshData:
     """Class for storing and processing mesh data."""
     
-    def __init__(self, mesh, domains, nt):
+    def __init__(self, mesh, domain, nt):
         """Initialize mesh data."""
         self.mesh = mesh
-        self.domains = domains
+        self.domain = domain
         self.nt = nt
 
-        self.time_discr = np.linspace(0, domains.T, nt)
+        self.time_discr = np.linspace(0, domain.T, nt)
 
         # Points
         self.points = mesh.points[:,:2]
@@ -301,12 +301,12 @@ class ElementCR:
 class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Methods
     """Implementation of Backward Euler scheme with Crouzeix-Raviart FEM."""
     
-    def __init__(self, domains, problem, mesh_data, element, time_scheme_order=1):
+    def __init__(self, domain, problem, mesh_data, element, time_scheme_order=1):
         """Initialize solver."""
-        self.domains = domains
+        self.domain = domain
         self.problem = problem
         self.mesh_data = mesh_data
-        self.dt = domains.T / (mesh_data.nt - 1)
+        self.dt = domain.T / (mesh_data.nt - 1)
         self.element = element
         self._compute_reference_element_matrices()
         self.time_scheme_order = time_scheme_order
@@ -518,38 +518,28 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         l2_errors = np.zeros(n_steps)
         linf_errors = np.zeros(n_steps)
         
-        # For each time step, compute errors
-        for i in range(n_steps):
-            t = i * self.dt
-            
-            # Get numerical solution at this time step
-            numerical_sol = self.solutions[i, :]
-            
-            # Compute analytical solution at midpoints at time t
-            midpoints = self.mesh_data.midpoints
-            t_array = np.full((n_segments, 1), t)
-            xyt = np.hstack([midpoints, t_array])
-            
-            analytical_sol = analytical_sol_fn(xyt)
-            
-            # Compute error
-            error = numerical_sol - analytical_sol
-            
-            # Compute segment volumes (areas) for L2 norm
-            segment_volumes = self.mesh_data.segment_lengths / 2  # Half-length for 1D segments
-            
-            # Compute L2 error (weighted by segment volumes)
-            l2_errors[i] = np.sqrt(np.sum(error**2 * segment_volumes) / np.sum(segment_volumes))
-            
-            # Compute L∞ error
-            linf_errors[i] = np.max(np.abs(error))
+        u_num = self.solutions[-1, :]
         
-        return {
-            'l2_errors': l2_errors,
-            'linf_errors': linf_errors,
-            'final_l2_error': l2_errors[-1],
-            'final_linf_error': linf_errors[-1]
-        }
+        # Compute analytical solution at midpoints at time t
+        midpoints = self.mesh_data.midpoints
+        t_array = np.full((n_segments, 1), self.domain.T)
+        xyt = np.hstack([midpoints, t_array])
+        
+        u_exact = analytical_sol_fn(xyt)
+        
+        error = np.abs(u_num - u_exact)
+        
+        #Max error
+        max_error = np.max(error)
+        
+        #L2 error
+        l2_error = np.sqrt(np.sum(error**2))
+        
+        #Relative L2 error
+        rel_l2_error = l2_error / (np.sqrt(np.sum(u_exact**2)) + 1e-10)
+        
+        return rel_l2_error, l2_error, max_error, u_num, u_exact
+        
 
     def plot_solution(self, analytical_sol_fn=None, time_index=None, save_dir="results"):
         """Plot solution at specified time index."""
@@ -624,7 +614,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         """Plot error evolution over time."""
         os.makedirs(save_dir, exist_ok=True)
         
-        time_values = np.linspace(0, self.domains.T, self.mesh_data.nt)
+        time_values = np.linspace(0, self.domain.T, self.mesh_data.nt)
         
         plt.figure(figsize=(10, 6))
         plt.semilogy(time_values, errors['l2_errors'], 'b-', label="L2 Error")
@@ -742,10 +732,10 @@ if __name__ == '__main__':
     mesh = meshio.read(mesh_file)
 
     # Setup parameters
-    domains = Domain(Lx=Lx, Ly=Ly, T=T)
+    domain = Domain(Lx=Lx, Ly=Ly, T=T)
     problem = Problem(vx=vx, vy=vy, D=D, sigma=sigma)
     n_steps = 16
-    mesh_data = MeshData(mesh, domains, nt=n_steps)  # More time steps for accuracy
+    mesh_data = MeshData(mesh, domain, nt=n_steps)  # More time steps for accuracy
 
     # mesh_data.show()
     print(mesh_data.number_of_segments)
@@ -754,14 +744,14 @@ if __name__ == '__main__':
     #Type of finite element methods
     cr_element = ElementCR()
 
-    solver1 = BESCRFEM(domains, problem, mesh_data, cr_element, 1)
+    solver1 = BESCRFEM(domain, problem, mesh_data, cr_element, 1)
 
     solutions1 = solver1.solve()
 
-    errors1 = solver1.compute_errors(problem.analytical_solution)
-    print(f"L2 Error: {errors1['final_l2_error']:0.4f}")
+    _, l2_error, max_error, _, _ = solver1.compute_errors(problem.analytical_solution)
+    print(f"L2 Error: {l2_error:0.4f}")
 
-    print(f"Max Error: {errors1['final_linf_error']:0.4f}")
+    print(f"Max Error: {max_error:0.4f}")
 
     solver1.plot_interpoleted_solution()
     solver1.plot_solution()

@@ -272,36 +272,19 @@ class PINN(nn.Module):
         with torch.no_grad():
             u_num = self.forward(xyt).cpu().numpy().flatten()
         
-        
-        points = torch.tensor(mesh_data.points[:, :2], dtype=torch.float32)
-        triangles = mesh_data.triangles
-        
-        t_tensor = self.domain.T * torch.ones_like(points[:, 0:1])
-        xyt = torch.cat([points, t_tensor], dim=1)
-        
-        #Then interpolate to evaluate at triangles nodes
-        vertex_values=  np.zeros(len(points))
-        count = np.zeros(len(points))
-        
-        for i, (a, b) in enumerate(mesh_data.segments):
-            vertex_values[a] += u_num[i]
-            vertex_values[b] += u_num[i]
-            count[a] += 1
-            count[b] += 1
-        
         #u exact
         u_exact = analytical_sol_fn(xyt).detach().numpy().flatten()
             
-        error = np.abs(vertex_values - u_exact)
+        error = np.abs(u_num - u_exact)
         
         #Max error
         max_error = np.max(error)
         
         #L2 error
-        l2_error = np.sqrt(np.mean(np.square(error)))
+        l2_error = np.sqrt(np.sum(error**2))
         
         #Relative L2 error
-        rel_l2_error = l2_error / (np.sqrt(np.mean(np.square(u_exact))) + 1e-10)
+        rel_l2_error = l2_error / (np.sqrt(np.sum(u_exact**2)) + 1e-10)
         
         return rel_l2_error, l2_error, max_error, u_num, u_exact
     
@@ -547,7 +530,7 @@ if __name__ == "__main__":
     batch_sizes = {'pde': 6000, 'ic': 1000, 'bc': 1000}
     lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
     lr = 1e-4
-    epochs = 1000
+    epochs = 10
     
     pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
     
