@@ -21,18 +21,6 @@ The project includes scripts for running experiments to compare the accuracy and
 
 ## Methodologies
 
-### Crouzeix-Raviart Finite Element Method (CR-FEM)
-
-The CR-FEM approach discretizes the spatial domain using a triangular mesh. The concentration variable is approximated by piecewise linear functions that are continuous at the midpoints of element edges (Crouzeix-Raviart elements). A Backward Euler scheme is used for time discretization. The `crbe.py` script handles mesh creation, matrix assembly, solution, and error computation.
-
-Key components:
--   `create_mesh()`: Generates a square mesh using `gmsh`.
--   `Problem`: Defines the analytical solution, initial conditions, boundary conditions, and source term.
--   `Domain`: Specifies the physical domain parameters.
--   `MeshData`: Stores and processes mesh information.
--   `ElementCR`: Defines properties of the Crouzeix-Raviart reference element.
--   `BESCRFEM`: Implements the Backward Euler Scheme with CR-FEM, including matrix assembly, solving the linear system, and computing errors.
-
 ### Physics-Informed Neural Networks (PINN)
 
 PINNs leverage deep neural networks to approximate the solution of PDEs. The network takes spatio-temporal coordinates (x, y, t) as input and outputs the concentration c(x,y,t). The training process minimizes a composite loss function that includes:
@@ -49,12 +37,25 @@ Key components:
 -   `EarlyStopping`: Utility to prevent overfitting.
 -   Helper functions for sampling collocation points (LHS) and computing gradients.
 
+
+### Crouzeix-Raviart Finite Element Method (CR-FEM)
+
+The CR-FEM approach discretizes the spatial domain using a triangular mesh. The concentration variable is approximated by piecewise linear functions that are continuous at the midpoints of element edges (Crouzeix-Raviart elements). A Backward Euler scheme is used for time discretization. The `crbe.py` script handles mesh creation, matrix assembly, solution, and error computation.
+
+Key components:
+-   `create_mesh()`: Generates a square mesh using `gmsh`.
+-   `Problem`: Defines the analytical solution, initial conditions, boundary conditions, and source term.
+-   `Domain`: Specifies the physical domain parameters.
+-   `MeshData`: Stores and processes mesh information.
+-   `ElementCR`: Defines properties of the Crouzeix-Raviart reference element.
+-   `BESCRFEM`: Implements the Backward Euler Scheme with CR-FEM, including matrix assembly, solving the linear system, and computing errors.
+
 ## File Structure
 
--   `crbe.py`: Contains the implementation of the Crouzeix-Raviart Finite Element Method solver.
 -   `pinn.py`: Contains the implementation of the Physics-Informed Neural Network solver.
--   `crbe_experiments.py`: Script to run and log experiments for the CR-FEM solver with varying mesh sizes.
+-   `crbe.py`: Contains the implementation of the Crouzeix-Raviart Finite Element Method solver.
 -   `pinn_experiments.py`: Script to run and log experiments for the PINN solver, varying mesh sizes for evaluation and network neuron counts.
+-   `crbe_experiments.py`: Script to run and log experiments for the CR-FEM solver with varying mesh sizes.
 -   `requirements.txt`: Lists the Python dependencies for the project.
 -   `Readme.md`: This file.
 -   `experimental_results/`: (Generated directory) Stores CSV files with results from experiment scripts.
@@ -70,7 +71,7 @@ Key components:
 2.  **Create a virtual environment (recommended):**
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    source venv/bin/activate
     ```
 3.  **Install dependencies:**
     ```bash
@@ -131,6 +132,4 @@ Based on the imported libraries, the primary dependencies are:
 
 Make sure these are listed in your `requirements.txt`.
 
-## License
-
-This project is currently unlicensed. Please add a license file if you intend to distribute it.
+## Reference
