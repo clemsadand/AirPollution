@@ -76,7 +76,7 @@ Key components:
 3.  **Install dependencies:**
     ```bash
     sudo apt-get update
-    sudo apt-get install -y libglu1-mesa
+    sudo apt-get install -y libglu1-mesa # additional packages for gmsh
     pip install -r requirements.txt
     ```
 4.  **Gmsh:** This project uses `gmsh` for mesh generation. If it's not installed correctly via pip or if you encounter issues, you might need to install it system-wide. Please refer to the [official Gmsh website](https://gmsh.info/) for installation instructions.
@@ -113,19 +113,6 @@ The experiment scripts automate running the solvers with different configuration
     ```
     This script will run the CR-FEM solver for various mesh sizes, and the results (errors, timings, memory usage) will be saved to `experimental_results/df_crbe_training_results.csv`.
 
-## Dependencies
 
-Based on the imported libraries, the primary dependencies are:
-
--   `torch`
--   `numpy`
--   `matplotlib`
--   `meshio`
--   `gmsh`
--   `scipy`
--   `tqdm`
--   `pyDOE` (for Latin Hypercube Sampling)
--   `psutil` (for memory tracking in experiments)
--   `pandas` (for handling experiment results)
 
 Make sure these are listed in your `requirements.txt`.
