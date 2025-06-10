@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.tri as mtri
 from matplotlib.animation import FuncAnimation
 import time
 from tqdm import tqdm
@@ -414,11 +415,11 @@ class PINN(nn.Module):
             fig.colorbar(cntr1, ax=ax)
         
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}.pdf", dpi=300)
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}.png", dpi=300)
+        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf", dpi=300)
+        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.png", dpi=300)
         plt.close()
         
-        print(f"Saved at {save_dir}/pinn_interpolated_solution_{t}.pdf-png")
+        print(f"Saved at {save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf-png")
 
 
 
