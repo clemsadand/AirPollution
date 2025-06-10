@@ -1,10 +1,10 @@
-# Advection-Diffusion Solvers: CR-FEM and PINN
+# Air Pollution Modelling with PINN and CR-FEM
 
 ## Description
 
-This project implements and compares two numerical methods for solving time-dependent advection-diffusion equations:
-1.  **Crouzeix-Raviart Finite Element Method (CR-FEM)**: A classical finite element approach using Crouzeix-Raviart elements and a Backward Euler time-stepping scheme.
-2.  **Physics-Informed Neural Networks (PINN)**: A deep learning approach where a neural network is trained to satisfy the PDE, initial conditions, and boundary conditions.
+This project study the modeling of air pollution using the advection-diffusion equations in a bounded two-dimensional domain. It implements and compares two numerical methods for solving time-dependent advection-diffusion equations:
+1.  **Physics-Informed Neural Networks (PINN)**: A deep learning approach where a neural network is trained to satisfy the PDE, initial conditions, and boundary conditions.
+2.  **Crouzeix-Raviart Finite Element Method (CR-FEM)**: A classical finite element approach using Crouzeix-Raviart elements and a Backward Euler time-stepping scheme.
 
 The project includes scripts for running experiments to compare the accuracy and performance of these methods.
 
@@ -64,8 +64,8 @@ Key components:
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository-url>
-    cd <repository-name>
+    git clone https://github.com/clemsadand/AirPollution.git
+    cd AirPollution
     ```
 2.  **Create a virtual environment (recommended):**
     ```bash
@@ -74,6 +74,8 @@ Key components:
     ```
 3.  **Install dependencies:**
     ```bash
+    sudo apt-get update
+    sudo apt-get install -y libglu1-mesa
     pip install -r requirements.txt
     ```
 4.  **Gmsh:** This project uses `gmsh` for mesh generation. If it's not installed correctly via pip or if you encounter issues, you might need to install it system-wide. Please refer to the [official Gmsh website](https://gmsh.info/) for installation instructions.
@@ -128,15 +130,6 @@ Based on the imported libraries, the primary dependencies are:
 -   `pandas` (for handling experiment results)
 
 Make sure these are listed in your `requirements.txt`.
-
-## Contributing
-
-Contributions are welcome! If you'd like to contribute, please follow these steps:
-1.  Fork the repository.
-2.  Create a new branch (`git checkout -b feature/your-feature-name`).
-3.  Make your changes and commit them (`git commit -m 'Add some feature'`).
-4.  Push to the branch (`git push origin feature/your-feature-name`).
-5.  Open a Pull Request.
 
 ## License
 
