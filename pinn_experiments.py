@@ -28,12 +28,7 @@ def get_cpu_memory():
 domain = pinn.Domain()
 problem = pinn.Problem()
 
-
-# Fixed Paramters
-
-
 # --- Experimental Settings ---
-
 domain_size = 20
 lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
 learning_rate = 1e-3
@@ -89,7 +84,7 @@ for i in range(len(mesh_sizes)):
 
     result_history[f"mesh_size_{mesh_size}"] = history
 
-    rel_l2_error, l2_error, max_error, u_num, u_exact = model.compute_errors(mesh_data, problem.analytical_solution)
+    rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
 
     pinn_results.append({
         "mesh_size": mesh_size,

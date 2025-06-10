@@ -9,7 +9,6 @@ import torch
 import pandas as pd
 import gc
 import torch
-
 import os
 
 torch.manual_seed(1234)
@@ -57,7 +56,7 @@ for i, mesh_size in enumerate(mesh_sizes):
     solver = crbe.BESCRFEM(domain, problem, mesh_data, cr_element, time_scheme_order=1) 
 
     solver.solve()
-    rel_l2_error, l2_error, max_error, _, _ = solver.compute_errors(exact_sol_fn)
+    rel_l2_error, l2_error, max_error = solver.compute_errors(exact_sol_fn)
     train_time = time.time() - start_time
 
     # --- Memory tracking after solve ---

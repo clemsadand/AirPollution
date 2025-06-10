@@ -436,7 +436,6 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
             self.base_system = self.global_mass + 0.5 * self.dt * (self.global_stiffness + self.global_advection)
         else:
             raise ValueError(f"Order {self.time_scheme_order} numerical scheme not implemented")
-
     
     def set_initial_condition(self):
         self.u_prev = self.problem.initial_condition_fn(self.mesh_data.midpoints)
@@ -511,34 +510,31 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
     
     def compute_errors(self, analytical_sol_fn):
         """Compute errors between numerical and analytical solutions."""
-        n_steps = self.mesh_data.nt
-        n_segments = self.mesh_data.number_of_segments
+        rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
+         
+        t_array = np.full((3, 1), self.domain.T)
+        for tri_idx in range(self.mesh_data.number_of_triangles):
+            segs = self.mesh_data.triangle_to_segments[tri_idx]
+            
+            u_num_midpoints = self.solutions[-1, segs]
+            u_exact_midpoints = analytical_sol_fn(np.hstack([self.mesh_data.midpoints[segs,:], t_array]))
+            #
+            area = self.mesh_data.triangle_areas[tri_idx]
+            local_error = area * np.sum((u_num_midpoints - u_exact_midpoints)**2) 
+            local_norm_u_exact = area * np.sum((u_exact_midpoints)**2) 
+            
+            #cumule des normes
+            l2_error += local_error
+            _norm_u_exact += local_norm_u_exact
+            max_error = max(max_error, local_error)
+         
+        _norm_u_exact /= 3
+        l2_error /= 3
+        max_error /= 3
         
-        # Initialize error metrics
-        l2_errors = np.zeros(n_steps)
-        linf_errors = np.zeros(n_steps)
+        rel_l2_error = l2_error / _norm_u_exact
         
-        u_num = self.solutions[-1, :]
-        
-        # Compute analytical solution at midpoints at time t
-        midpoints = self.mesh_data.midpoints
-        t_array = np.full((n_segments, 1), self.domain.T)
-        xyt = np.hstack([midpoints, t_array])
-        
-        u_exact = analytical_sol_fn(xyt)
-        
-        error = np.abs(u_num - u_exact)
-        
-        #Max error
-        max_error = np.max(error)
-        
-        #L2 error
-        l2_error = np.sqrt(np.sum(error**2))
-        
-        #Relative L2 error
-        rel_l2_error = l2_error / (np.sqrt(np.sum(u_exact**2)) + 1e-10)
-        
-        return rel_l2_error, l2_error, max_error, u_num, u_exact
+        return rel_l2_error, l2_error, max_error
         
 
     def plot_solution(self, analytical_sol_fn=None, time_index=None, save_dir="results"):
@@ -718,7 +714,9 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         plt.close()
         print(f"Saved at {save_dir}/solution_t{time_index}_interpolated.png/pdf")
         
-        
+
+
+
 if __name__ == '__main__':
     domain_size = 20.0
     Lx = Ly = domain_size  # Half-size of the domain
@@ -728,13 +726,13 @@ if __name__ == '__main__':
     sigma = 0.1
 
     # Create mesh with 30 points per axis (higher resolution)
-    mesh_file = create_mesh(32, domain_size=domain_size)
+    mesh_file = create_mesh(8, domain_size=domain_size)
     mesh = meshio.read(mesh_file)
 
     # Setup parameters
     domain = Domain(Lx=Lx, Ly=Ly, T=T)
     problem = Problem(vx=vx, vy=vy, D=D, sigma=sigma)
-    n_steps = 16
+    n_steps = 128
     mesh_data = MeshData(mesh, domain, nt=n_steps)  # More time steps for accuracy
 
     # mesh_data.show()
@@ -748,7 +746,10 @@ if __name__ == '__main__':
 
     solutions1 = solver1.solve()
 
-    _, l2_error, max_error, _, _ = solver1.compute_errors(problem.analytical_solution)
+    rel_l2_error, l2_error, max_error = solver1.compute_errors(problem.analytical_solution)
+    
+    print(f"Rel L2 Error: {rel_l2_error:0.4f}")
+    
     print(f"L2 Error: {l2_error:0.4f}")
 
     print(f"Max Error: {max_error:0.4f}")
