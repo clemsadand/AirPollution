@@ -63,7 +63,7 @@ class Problem(AdDifProblem):
         """Compute analytical solution at space-time points."""
         denom = 4 * self.D * xyt[:, 2] + self.sigma**2
         
-        num = (xyt[:, 0] - self.v[0] * xyt[:, 2])**2 + (xyt[:, 0] - self.v[1] * xyt[:, 2])**2
+        num = (xyt[:, 0] - self.v[0] * xyt[:, 2])**2 + (xyt[:, 1] - self.v[1] * xyt[:, 2])**2
         return torch.exp(- num /denom) / (torch.pi * denom)
 
     def initial_condition_fn(self, xy):
@@ -179,7 +179,7 @@ class PINN(nn.Module):
         
         return grad_t + v_dot_grad - self.problem.D * laplacian_xy - source
     
-    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6):
+    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6):
         """Train the PINNusing Latin Hypercube sampling for collocation points"""
         optimizer = optim.Adam(self.parameters(), lr=lr)
         
@@ -261,33 +261,41 @@ class PINN(nn.Module):
         print(f"Training completed in {training_time:.2f} seconds")
         
         return self.history
-        
+    
     def compute_errors(self, mesh_data, analytical_sol_fn):
-        """Compute errors between numerical and analytical solutions at T final."""
-        
-        #Evaluate the PINN at midpoint like CR
-        midpoints = torch.tensor(mesh_data.midpoints, dtype=torch.float32)
-        t_tensor = self.domain.T * torch.ones_like(midpoints[:, 0:1])
-        xyt = torch.cat([midpoints, t_tensor], dim=1)
-        
-        with torch.no_grad():
-            u_num = self.forward(xyt).cpu().numpy().flatten()
-        
-        #u exact
-        u_exact = analytical_sol_fn(xyt).detach().numpy().flatten()
+        """Compute errors between numerical and analytical solutions."""
+        rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
+         
+        t_tensor = torch.tensor(np.full((3, 1), self.domain.T), dtype=torch.float32)
+        for tri_idx in range(mesh_data.number_of_triangles):
+            segs = mesh_data.triangle_to_segments[tri_idx]
             
-        error = np.abs(u_num - u_exact)
+            midpoints = torch.tensor(mesh_data.midpoints[segs,:], dtype=torch.float32)
+            xyt = torch.cat([midpoints, t_tensor], dim=1)
+            u_exact_midpoints = analytical_sol_fn(xyt)
+            
+		      
+            with torch.no_grad():
+                u_num_midpoints = self.forward(xyt).cpu().numpy().flatten()
+
+            u_exact_midpoints = analytical_sol_fn(xyt).detach().numpy().flatten()
+            #
+            area = mesh_data.triangle_areas[tri_idx]
+            local_error = area * np.sum((u_num_midpoints - u_exact_midpoints)**2) 
+            local_norm_u_exact = area * np.sum((u_exact_midpoints)**2) 
+            
+            #cumule des normes
+            l2_error += local_error
+            _norm_u_exact += local_norm_u_exact
+            max_error = max(max_error, local_error)
+         
+        _norm_u_exact /= 3
+        l2_error /= 3
+        max_error /= 3
         
-        #Max error
-        max_error = np.max(error)
+        rel_l2_error = l2_error / _norm_u_exact
         
-        #L2 error
-        l2_error = np.sqrt(np.sum(error**2))
-        
-        #Relative L2 error
-        rel_l2_error = l2_error / (np.sqrt(np.sum(u_exact**2)) + 1e-10)
-        
-        return rel_l2_error, l2_error, max_error, u_num, u_exact
+        return rel_l2_error, l2_error, max_error
     
     def plot_history(self):
         """Plot training loss history"""
@@ -319,7 +327,7 @@ class PINN(nn.Module):
             u_num = self.forward(xyt).cpu().numpy().flatten()
             
         if analytical_sol_fn:
-            u_exact = analytical_sol_fn(xyt).detach().numpy().flatten()
+            analytical_vertex_values = analytical_sol_fn(xyt).detach().numpy().flatten()
             
             # Create subplot
             fig, axs = plt.subplots(1, 2, figsize=(15, 5))
@@ -386,7 +394,7 @@ class PINN(nn.Module):
         vertex_values /= np.maximum(count, 1)
         
         if analytical_sol_fn:
-            u_exact = analytical_sol_fn(xyt).detach().numpy().flatten()
+            analytical_vertex_values = analytical_sol_fn(xyt).detach().numpy().flatten()
             
             # Create subplot
             fig, axs = plt.subplots(1, 2, figsize=(15, 5))
@@ -533,27 +541,23 @@ if __name__ == "__main__":
     lr = 1e-4
     epochs = 10
     
-    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
     
     xy = torch.tensor([[1.5, 3], [5, 4]], device=device, requires_grad=True)
     
-    
     pinn.plot_history()
     
-    #
     import crbe
     import meshio
     import matplotlib.pyplot as plt
     import matplotlib.tri as mtri
     
-    mesh_file = crbe.create_mesh(64, domain_size=20.0)
+    mesh_file = crbe.create_mesh(32, domain_size=20.0)
     mesh = meshio.read(mesh_file)
-    mesh_data = crbe.MeshData(mesh, domain, nt=32)
-    
+    mesh_data = crbe.MeshData(mesh, domain, nt=16)
     
     errors = pinn.compute_errors(mesh_data, problem.analytical_solution)
     print(f"Compute error\n\tRel L2 Error: {errors[0]:.4f}\n\tL2 Error: {errors[1]:.4f}\n\tMax Error: {errors[2]:.4f}")
     print()
     
-    
-    pinn.plot_interpolated_solution(10.0, mesh_data)
+    pinn.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
