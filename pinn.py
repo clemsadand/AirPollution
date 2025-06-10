@@ -140,8 +140,10 @@ class PINN(nn.Module):
             self.activation = nn.Tanh()
         elif activation == "sine":
             self.activation = Sine()
-        else:
+        elif activation == "swish":
             self.activation = Swish()
+        else:
+        		raise ValueError(f"Activation function {activation} not implemented")
             
         self.loss_function = nn.MSELoss(reduction='mean')
         
@@ -266,11 +268,11 @@ class PINN(nn.Module):
         """Compute errors between numerical and analytical solutions."""
         rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
          
-        t_tensor = torch.tensor(np.full((3, 1), self.domain.T), dtype=torch.float32)
+        t_tensor = torch.tensor(np.full((3, 1), self.domain.T), dtype=torch.float32, device=device)
         for tri_idx in range(mesh_data.number_of_triangles):
             segs = mesh_data.triangle_to_segments[tri_idx]
             
-            midpoints = torch.tensor(mesh_data.midpoints[segs,:], dtype=torch.float32)
+            midpoints = torch.tensor(mesh_data.midpoints[segs,:], dtype=torch.float32, device=device)
             xyt = torch.cat([midpoints, t_tensor], dim=1)
             u_exact_midpoints = analytical_sol_fn(xyt)
             
@@ -278,7 +280,7 @@ class PINN(nn.Module):
             with torch.no_grad():
                 u_num_midpoints = self.forward(xyt).cpu().numpy().flatten()
 
-            u_exact_midpoints = analytical_sol_fn(xyt).detach().numpy().flatten()
+            u_exact_midpoints = analytical_sol_fn(xyt).cpu().numpy().flatten()
             #
             area = mesh_data.triangle_areas[tri_idx]
             local_error = area * np.sum((u_num_midpoints - u_exact_midpoints)**2) 
@@ -318,16 +320,18 @@ class PINN(nn.Module):
         """Plot error evolution over time."""
         os.makedirs(save_dir, exist_ok=True)
         
-        points = torch.tensor(mesh_data.points[:, 0:2], dtype=torch.float32)
+        points = torch.tensor(mesh_data.points[:, 0:2], dtype=torch.float32, device=device)
         triangles = mesh_data.triangles
         t_tensor = t * torch.ones_like(points[:, 0:1])
         xyt = torch.cat([points, t_tensor], dim=1)
+        
+        points = points.cpu().numpy()
         
         with torch.no_grad():
             u_num = self.forward(xyt).cpu().numpy().flatten()
             
         if analytical_sol_fn:
-            analytical_vertex_values = analytical_sol_fn(xyt).detach().numpy().flatten()
+            analytical_vertex_values = analytical_sol_fn(xyt).cpu().numpy().flatten()
             
             # Create subplot
             fig, axs = plt.subplots(1, 2, figsize=(15, 5))
@@ -367,18 +371,22 @@ class PINN(nn.Module):
         os.makedirs(save_dir, exist_ok=True)
         
         #Evaluate the PINN at midpoint like CR
-        midpoints = torch.tensor(mesh_data.midpoints, dtype=torch.float32)
-        t_tensor = t * torch.ones_like(midpoints[:, 0:1])
+        midpoints = torch.tensor(mesh_data.midpoints, dtype=torch.float32, device=device)
+        t_tensor = t * torch.ones_like(midpoints[:, 0:1], device=device)
         xyt = torch.cat([midpoints, t_tensor], dim=1)
+
+        midpoints = midpoints.cpu().numpy()
         
         with torch.no_grad():
             u_num = self.forward(xyt).cpu().numpy().flatten()
             
-        points = torch.tensor(mesh_data.points[:, 0:2], dtype=torch.float32)
+        points = torch.tensor(mesh_data.points[:, 0:2], dtype=torch.float32, device=device)
         triangles = mesh_data.triangles
         
-        t_tensor = t * torch.ones_like(points[:, 0:1])
+        t_tensor = t * torch.ones_like(points[:, 0:1], device=device)
         xyt = torch.cat([points, t_tensor], dim=1)
+
+        points = points.cpu().numpy()
         
         #Then interpolate to evaluate at triangles nodes
         vertex_values=  np.zeros(len(points))
@@ -394,7 +402,7 @@ class PINN(nn.Module):
         vertex_values /= np.maximum(count, 1)
         
         if analytical_sol_fn:
-            analytical_vertex_values = analytical_sol_fn(xyt).detach().numpy().flatten()
+            analytical_vertex_values = analytical_sol_fn(xyt).cpu().numpy().flatten()
             
             # Create subplot
             fig, axs = plt.subplots(1, 2, figsize=(15, 5))
@@ -527,7 +535,7 @@ if __name__ == "__main__":
     domain = Domain()
     
     problem = Problem()
-    layers = [3] + [32] * 5 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
+    layers = [3] + [16] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
     pinn = PINN(layers, problem, domain).to(device)
 
     xyt = torch.tensor([[1.0, 0.1, 0.0]], device=device, requires_grad=True)  # Shape: (1, 3)
@@ -538,8 +546,8 @@ if __name__ == "__main__":
     
     batch_sizes = {'pde': 6000, 'ic': 1000, 'bc': 1000}
     lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
-    lr = 1e-4
-    epochs = 10
+    lr = 1e-3
+    epochs = 5000
     
     pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
     
@@ -552,9 +560,9 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import matplotlib.tri as mtri
     
-    mesh_file = crbe.create_mesh(32, domain_size=20.0)
+    mesh_file = crbe.create_mesh(64, domain_size=20.0)
     mesh = meshio.read(mesh_file)
-    mesh_data = crbe.MeshData(mesh, domain, nt=16)
+    mesh_data = crbe.MeshData(mesh, domain, nt=32)
     
     errors = pinn.compute_errors(mesh_data, problem.analytical_solution)
     print(f"Compute error\n\tRel L2 Error: {errors[0]:.4f}\n\tL2 Error: {errors[1]:.4f}\n\tMax Error: {errors[2]:.4f}")
