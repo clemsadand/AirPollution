@@ -181,7 +181,7 @@ class PINN(nn.Module):
         
         return grad_t + v_dot_grad - self.problem.D * laplacian_xy - source
     
-    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6):
+    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6, mini_batch_size=8):
         """Train the PINNusing Latin Hypercube sampling for collocation points"""
         optimizer = optim.Adam(self.parameters(), lr=lr)
         
@@ -206,17 +206,29 @@ class PINN(nn.Module):
         
         #training loop
         for epoch in tqdm(range(epochs)):
-            xyt = lhs_sampling(batch_sizes['pde'], self.xy_ranges, self.t_range) #collocation for pde
             
             xyt_bc = sample_boundary_points(batch_sizes['bc'], self.xy_ranges, self.t_range) #collocation for bc
             
             # zero out gradient
             optimizer.zero_grad()
             
-            #Compute losses
-            pde_loss = torch.mean(
-                torch.square(self.compute_pde_residual(xyt))
-            )
+            xyt = lhs_sampling(batch_sizes['pde'], self.xy_ranges, self.t_range)  # collocation for pde
+
+            if batch_sizes['pde'] > 10000:
+                n_points = xyt.shape[0]
+                pde_loss = 0.0
+
+                for i in range(0, n_points, mini_batch_size):
+                    xyt_mini = xyt[i:i+mini_batch_size]
+                    residual = self.compute_pde_residual(xyt_mini)
+                    pde_loss += torch.sum(torch.square(residual))
+
+                pde_loss /= n_points  # average over full batch
+            else:
+                pde_loss = torch.mean(
+                    torch.square(self.compute_pde_residual(xyt))
+                )
+
             
             ic_loss = self.loss_function(
                 self.forward(xyt_ic),
