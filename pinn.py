@@ -223,13 +223,11 @@ class PINN(nn.Module):
                 pde_loss = 0.0
                 
                 losses = []
-				for i in range(0, n_points, mini_batch_size):
-					xyt_mini = xyt[i:i+mini_batch_size]
-					residual = self.compute_pde_residual(xyt_mini)
-					losses.append(torch.mean(torch.square(residual)))
-
-				pde_loss = torch.mean(torch.stack(losses))
-
+                for i in range(0, n_points, mini_batch_size):
+                	xyt_mini = xyt[i:i+mini_batch_size]
+                	residual = self.compute_pde_residual(xyt_mini)
+                	losses.append(torch.mean(torch.square(residual)))
+                pde_loss = torch.mean(torch.stack(losses))
             else:
                 pde_loss = torch.mean(
                     torch.square(self.compute_pde_residual(xyt))
