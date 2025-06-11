@@ -175,7 +175,9 @@ class PINN(nn.Module):
         c = self.forward(xyt)
         grad_xy, grad_t, laplacian_xy = compute_gradient_and_laplacian_xy(c, xyt)
         
-        v_dot_grad = sum([torch.tensor(self.problem.v)[d] * grad_xy[:, d:d+1] for d in range(D-1)])
+        #v_dot_grad = sum([torch.tensor(self.problem.v)[d] * grad_xy[:, d:d+1] for d in range(D-1)])
+        v = torch.tensor(self.problem.v, device=xyt.device)
+        v_dot_grad = torch.sum(v[:D-1] * grad_xy, dim=1, keepdim=True)
         source = self.problem.source_term(xyt).to(xyt.device).unsqueeze(-1)
         
         
@@ -214,12 +216,11 @@ class PINN(nn.Module):
             
             xyt = lhs_sampling(batch_sizes['pde'], self.xy_ranges, self.t_range)  # collocation for pde
 
-            if batch_sizes['pde'] > 4000:
-                if mini_batch_size==None:
-                	mini_batch_size = int(batch_sizes['pde'] / 4000)
+            if batch_sizes['pde'] > 4096:
+                mini_batch_size = mini_batch_size or 4096
                 n_points = xyt.shape[0]
+                
                 pde_loss = 0.0
-
                 
                 for i in range(0, n_points, mini_batch_size):
                     xyt_mini = xyt[i:i+mini_batch_size]
@@ -282,7 +283,7 @@ class PINN(nn.Module):
     def compute_errors(self, mesh_data, analytical_sol_fn):
             """Compute errors between numerical and analytical solutions on GPU."""
             rel_l2_error = torch.tensor(0.0, dtype=torch.float32, device=device)
-            max_error = torch.tensor(0.0, dtype=torch.float32, dtype=torch.float32, device=device)
+            max_error = torch.tensor(0.0, dtype=torch.float32, device=device)
             l2_error = torch.tensor(0.0, dtype=torch.float32, device=device)
             
             _norm_u_exact = torch.tensor(0.0, dtype=torch.float32, device=device)
@@ -329,8 +330,8 @@ class PINN(nn.Module):
         plt.title('Training Loss History')
         plt.legend()
         plt.grid(True, which="both", ls="--")
-        plt.savefig("results/loss_history.pdf", dpi=500)
-        plt.savefig("results/loss_history.png", dpi=500)
+        plt.savefig(f"{save_dir}/loss_history.pdf", dpi=500)
+        plt.savefig(f"{save_dir}/loss_history.png", dpi=500)
         plt.tight_layout()
         plt.close()
     
@@ -378,8 +379,8 @@ class PINN(nn.Module):
             fig.colorbar(cntr1, ax=ax)
         
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/solution_{t}.pdf", dpi=300)
-        plt.savefig(f"{save_dir}/solution_{t}.png", dpi=300)
+        plt.savefig(f"{save_dir}/solution_{t}.pdf", dpi=500)
+        plt.savefig(f"{save_dir}/solution_{t}.png", dpi=500)
         plt.close()
         
         print(f"Saved at {save_dir}/solution_{t}.pdf-png")
@@ -449,8 +450,8 @@ class PINN(nn.Module):
             fig.colorbar(cntr1, ax=ax)
         
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf", dpi=300)
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.png", dpi=300)
+        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf", dpi=500)
+        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.png", dpi=500)
         plt.close()
         
         print(f"Saved at {save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf-png")
@@ -466,7 +467,6 @@ def compute_gradient_and_laplacian_xy(model, xyt):
         		grad_outputs=torch.ones_like(model),
         		retain_graph=True,
         		create_graph=True,
-        		allow_unused=True
         )[0]
     
     grad_xy = grad_c[:, :D-1]
