@@ -222,12 +222,14 @@ class PINN(nn.Module):
                 
                 pde_loss = 0.0
                 
-                for i in range(0, n_points, mini_batch_size):
-                    xyt_mini = xyt[i:i+mini_batch_size]
-                    residual = self.compute_pde_residual(xyt_mini)
-                    pde_loss += torch.sum(torch.square(residual))
+                losses = []
+				for i in range(0, n_points, mini_batch_size):
+					xyt_mini = xyt[i:i+mini_batch_size]
+					residual = self.compute_pde_residual(xyt_mini)
+					losses.append(torch.mean(torch.square(residual)))
 
-                pde_loss /= n_points  # average over full batch
+				pde_loss = torch.mean(torch.stack(losses))
+
             else:
                 pde_loss = torch.mean(
                     torch.square(self.compute_pde_residual(xyt))
@@ -288,9 +290,8 @@ class PINN(nn.Module):
             
             _norm_u_exact = torch.tensor(0.0, dtype=torch.float32, device=device)
             
-            t_tensor = torch.full((3, 1), self.domain.T, dtype=torch.float32, device=device)
-
             midpoints = torch.tensor(mesh_data.midpoints, dtype=torch.float32, device=device)
+            t_tensor = torch.full((midpoints.shape[0], 1), self.domain.T, dtype=torch.float32, device=device)
             midpoints_t = torch.cat([midpoints, t_tensor], dim=1)
             
             for tri_idx in range(mesh_data.number_of_triangles):
