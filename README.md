@@ -68,7 +68,7 @@ Key components:
     git clone https://github.com/clemsadand/AirPollution.git
     cd AirPollution
     ```
-2.  **Create a virtual environment (recommended):**
+2.  **Create a virtual environment (optionnal):**
     ```bash
     python -m venv venv
     source venv/bin/activate
