@@ -214,7 +214,7 @@ class PINN(nn.Module):
             
             xyt = lhs_sampling(batch_sizes['pde'], self.xy_ranges, self.t_range)  # collocation for pde
 
-            if batch_sizes['pde'] > 10000:
+            if batch_sizes['pde'] > 8000:
                 n_points = xyt.shape[0]
                 pde_loss = 0.0
 
@@ -276,40 +276,76 @@ class PINN(nn.Module):
         
         return self.history
     
-    def compute_errors(self, mesh_data, analytical_sol_fn):
-        """Compute errors between numerical and analytical solutions."""
-        rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
-         
-        t_tensor = torch.tensor(np.full((3, 1), self.domain.T), dtype=torch.float32, device=device)
-        for tri_idx in range(mesh_data.number_of_triangles):
-            segs = mesh_data.triangle_to_segments[tri_idx]
-            
-            midpoints = torch.tensor(mesh_data.midpoints[segs,:], dtype=torch.float32, device=device)
-            xyt = torch.cat([midpoints, t_tensor], dim=1)
-            u_exact_midpoints = analytical_sol_fn(xyt)
-            
-		      
-            with torch.no_grad():
-                u_num_midpoints = self.forward(xyt).cpu().numpy().flatten()
+        # def compute_errors(self, mesh_data, analytical_sol_fn):
+        #     """Compute errors between numerical and analytical solutions."""
+        #     rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
+             
+        #     t_tensor = torch.tensor(np.full((3, 1), self.domain.T), dtype=torch.float32, device=device)
+        #     for tri_idx in range(mesh_data.number_of_triangles):
+        #         segs = mesh_data.triangle_to_segments[tri_idx]
+                
+        #         midpoints = torch.tensor(mesh_data.midpoints[segs,:], dtype=torch.float32, device=device)
+        #         xyt = torch.cat([midpoints, t_tensor], dim=1)
+        #         u_exact_midpoints = analytical_sol_fn(xyt)
+                
+		          
+        #         with torch.no_grad():
+        #             u_num_midpoints = self.forward(xyt).cpu().numpy().flatten()
 
-            u_exact_midpoints = analytical_sol_fn(xyt).cpu().numpy().flatten()
-            #
-            area = mesh_data.triangle_areas[tri_idx]
-            local_error = area * np.sum((u_num_midpoints - u_exact_midpoints)**2) 
-            local_norm_u_exact = area * np.sum((u_exact_midpoints)**2) 
+        #         u_exact_midpoints = analytical_sol_fn(xyt).cpu().numpy().flatten()
+        #         #
+        #         area = mesh_data.triangle_areas[tri_idx]
+        #         local_error = area * np.sum((u_num_midpoints - u_exact_midpoints)**2) 
+        #         local_norm_u_exact = area * np.sum((u_exact_midpoints)**2) 
+                
+        #         #cumule des normes
+        #         l2_error += local_error
+        #         _norm_u_exact += local_norm_u_exact
+        #         max_error = max(max_error, local_error)
+             
+        #     _norm_u_exact /= 3
+        #     l2_error /= 3
+        #     max_error /= 3
             
-            #cumule des normes
-            l2_error += local_error
-            _norm_u_exact += local_norm_u_exact
-            max_error = max(max_error, local_error)
-         
-        _norm_u_exact /= 3
-        l2_error /= 3
-        max_error /= 3
+        #     rel_l2_error = l2_error / _norm_u_exact
+            
+        #     return rel_l2_error, l2_error, max_error
         
-        rel_l2_error = l2_error / _norm_u_exact
-        
-        return rel_l2_error, l2_error, max_error
+        def compute_errors(self, mesh_data, analytical_sol_fn):
+            """Compute errors between numerical and analytical solutions on GPU."""
+            rel_l2_error = torch.tensor(0.0, device=device)
+            max_error = torch.tensor(0.0, device=device)
+            l2_error = torch.tensor(0.0, device=device)
+            _norm_u_exact = torch.tensor(0.0, device=device)
+            
+            t_tensor = torch.full((3, 1), self.domain.T, dtype=torch.float32, device=device)
+
+            for tri_idx in range(mesh_data.number_of_triangles):
+                segs = mesh_data.triangle_to_segments[tri_idx]
+
+                midpoints = torch.tensor(mesh_data.midpoints[segs, :], dtype=torch.float32, device=device)
+                xyt = torch.cat([midpoints, t_tensor], dim=1)
+
+                with torch.no_grad():
+                    u_exact_midpoints = analytical_sol_fn(xyt).squeeze()
+                    u_num_midpoints = self.forward(xyt).squeeze()
+
+                area = mesh_data.triangle_areas[tri_idx]
+                local_error = area * torch.sum((u_num_midpoints - u_exact_midpoints) ** 2)
+                local_norm_u_exact = area * torch.sum(u_exact_midpoints ** 2)
+
+                l2_error += local_error
+                _norm_u_exact += local_norm_u_exact
+                max_error = torch.maximum(max_error, local_error)
+
+            _norm_u_exact /= 3
+            l2_error /= 3
+            max_error /= 3
+
+            rel_l2_error = l2_error / (_norm_u_exact + 1e-12)  # avoid division by zero
+
+            return rel_l2_error.item(), l2_error.item(), max_error.item()
+
     
     def plot_history(self):
         """Plot training loss history"""
