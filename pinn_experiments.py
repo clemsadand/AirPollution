@@ -15,6 +15,10 @@ np.random.seed(1234)
 
 os.makedirs("experimental_results", exist_ok=True)
 
+# Check if GPU is available
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+
 # --- Function to track GPU and CPU memory ---
 def get_gpu_memory():
     if torch.cuda.is_available():
@@ -107,10 +111,12 @@ for i in range(len(mesh_sizes)):
     print("-" * 40)
 
     del model
+    if mesh_size >=64:
+        pd.DataFrame(pinn_results).to_csv("experimental_results/df_pinn_training_results.csv")
     # break
 
 # --- Export Results ---
 df_pinn = pd.DataFrame(pinn_results)
 
 df_pinn.to_csv("experimental_results/df_pinn_training_results.csv")
-df_pinn
+print(df_pinn)

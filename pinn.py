@@ -181,7 +181,7 @@ class PINN(nn.Module):
         
         return grad_t + v_dot_grad - self.problem.D * laplacian_xy - source
     
-    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6, mini_batch_size=8):
+    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6, mini_batch_size=None):
         """Train the PINNusing Latin Hypercube sampling for collocation points"""
         optimizer = optim.Adam(self.parameters(), lr=lr)
         
@@ -214,10 +214,13 @@ class PINN(nn.Module):
             
             xyt = lhs_sampling(batch_sizes['pde'], self.xy_ranges, self.t_range)  # collocation for pde
 
-            if batch_sizes['pde'] > 8000:
+            if batch_sizes['pde'] > 4000:
+                if mini_batch_size==None:
+                	mini_batch_size = int(batch_sizes['pde'] / 4000)
                 n_points = xyt.shape[0]
                 pde_loss = 0.0
 
+                
                 for i in range(0, n_points, mini_batch_size):
                     xyt_mini = xyt[i:i+mini_batch_size]
                     residual = self.compute_pde_residual(xyt_mini)
@@ -278,18 +281,21 @@ class PINN(nn.Module):
 
     def compute_errors(self, mesh_data, analytical_sol_fn):
             """Compute errors between numerical and analytical solutions on GPU."""
-            rel_l2_error = torch.tensor(0.0, device=device)
-            max_error = torch.tensor(0.0, device=device)
-            l2_error = torch.tensor(0.0, device=device)
-            _norm_u_exact = torch.tensor(0.0, device=device)
+            rel_l2_error = torch.tensor(0.0, dtype=torch.float32, device=device)
+            max_error = torch.tensor(0.0, dtype=torch.float32, dtype=torch.float32, device=device)
+            l2_error = torch.tensor(0.0, dtype=torch.float32, device=device)
+            
+            _norm_u_exact = torch.tensor(0.0, dtype=torch.float32, device=device)
             
             t_tensor = torch.full((3, 1), self.domain.T, dtype=torch.float32, device=device)
 
+            midpoints = torch.tensor(mesh_data.midpoints, dtype=torch.float32, device=device)
+            midpoints_t = torch.cat([midpoints, t_tensor], dim=1)
+            
             for tri_idx in range(mesh_data.number_of_triangles):
                 segs = mesh_data.triangle_to_segments[tri_idx]
-
-                midpoints = torch.tensor(mesh_data.midpoints[segs, :], dtype=torch.float32, device=device)
-                xyt = torch.cat([midpoints, t_tensor], dim=1)
+                
+                xyt = midpoints_t[segs,:]
 
                 with torch.no_grad():
                     u_exact_midpoints = analytical_sol_fn(xyt).squeeze()
@@ -311,7 +317,7 @@ class PINN(nn.Module):
 
             return rel_l2_error.item(), l2_error.item(), max_error.item()
 
-    def plot_history(self):
+    def plot_history(self, save_dir="results"):
         """Plot training loss history"""
         plt.figure(figsize=(10, 6))
         plt.semilogy(self.history['total_loss'], label='Total Loss', ls="-.")
@@ -323,8 +329,8 @@ class PINN(nn.Module):
         plt.title('Training Loss History')
         plt.legend()
         plt.grid(True, which="both", ls="--")
-        plt.savefig("loss_history.pdf", dpi=500)
-        plt.savefig("loss_history.png", dpi=500)
+        plt.savefig("results/loss_history.pdf", dpi=500)
+        plt.savefig("results/loss_history.png", dpi=500)
         plt.tight_layout()
         plt.close()
     
@@ -542,31 +548,17 @@ def sample_boundary_points(n_samples, domain, time_range):
     return xyt_bc
 
 
+print("Loading pinn.py")
+
 if __name__ == "__main__":
+    print("Running main block in pinn.py")
+
     #  Initialize
     domain = Domain()
     
     problem = Problem()
-    layers = [3] + [16] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
-    pinn = PINN(layers, problem, domain).to(device)
-
-    xyt = torch.tensor([[1.0, 0.1, 0.0]], device=device, requires_grad=True)  # Shape: (1, 3)
-
-    # Compute residual
-    residual = pinn.compute_pde_residual(xyt)
-    print("PDE residual at (1.0, 0.1, 0.0):", residual)
     
-    batch_sizes = {'pde': 6000, 'ic': 1000, 'bc': 1000}
-    lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
-    lr = 1e-3
-    epochs = 5000
-    
-    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
-    
-    xy = torch.tensor([[1.5, 3], [5, 4]], device=device, requires_grad=True)
-    
-    pinn.plot_history()
-    
+    #mmeshing
     import crbe
     import meshio
     import matplotlib.pyplot as plt
@@ -574,7 +566,32 @@ if __name__ == "__main__":
     
     mesh_file = crbe.create_mesh(64, domain_size=20.0)
     mesh = meshio.read(mesh_file)
-    mesh_data = crbe.MeshData(mesh, domain, nt=32)
+    mesh_data = crbe.MeshData(mesh, domain, nt=128)
+    
+    # PINN's setup
+    layers = [3] + [32] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
+    pinn = PINN(layers, problem, domain).to(device)
+
+    xyt = torch.tensor([[1.0, 0.1, 0.0]], device=device, requires_grad=True)  # Shape: (1, 3)
+
+    # Compute residual
+    #residual = pinn.compute_pde_residual(xyt)
+    #print("PDE residual at (1.0, 0.1, 0.0):", residual)
+    
+    n_ic = round(0.2 * mesh_data.number_of_segments)
+    n_bc = n_ic
+    n_col = mesh_data.number_of_segments - n_ic - n_bc
+    batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
+    lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
+    
+    lr = 1e-3
+    epochs = 2
+    
+    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+    
+    #xy = torch.tensor([[1.5, 3], [5, 4]], device=device, requires_grad=True)
+    
+    pinn.plot_history()
     
     errors = pinn.compute_errors(mesh_data, problem.analytical_solution)
     print(f"Compute error\n\tRel L2 Error: {errors[0]:.4f}\n\tL2 Error: {errors[1]:.4f}\n\tMax Error: {errors[2]:.4f}")
