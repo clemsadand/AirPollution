@@ -275,43 +275,8 @@ class PINN(nn.Module):
         print(f"Training completed in {training_time:.2f} seconds")
         
         return self.history
-    
-        # def compute_errors(self, mesh_data, analytical_sol_fn):
-        #     """Compute errors between numerical and analytical solutions."""
-        #     rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
-             
-        #     t_tensor = torch.tensor(np.full((3, 1), self.domain.T), dtype=torch.float32, device=device)
-        #     for tri_idx in range(mesh_data.number_of_triangles):
-        #         segs = mesh_data.triangle_to_segments[tri_idx]
-                
-        #         midpoints = torch.tensor(mesh_data.midpoints[segs,:], dtype=torch.float32, device=device)
-        #         xyt = torch.cat([midpoints, t_tensor], dim=1)
-        #         u_exact_midpoints = analytical_sol_fn(xyt)
-                
-		          
-        #         with torch.no_grad():
-        #             u_num_midpoints = self.forward(xyt).cpu().numpy().flatten()
 
-        #         u_exact_midpoints = analytical_sol_fn(xyt).cpu().numpy().flatten()
-        #         #
-        #         area = mesh_data.triangle_areas[tri_idx]
-        #         local_error = area * np.sum((u_num_midpoints - u_exact_midpoints)**2) 
-        #         local_norm_u_exact = area * np.sum((u_exact_midpoints)**2) 
-                
-        #         #cumule des normes
-        #         l2_error += local_error
-        #         _norm_u_exact += local_norm_u_exact
-        #         max_error = max(max_error, local_error)
-             
-        #     _norm_u_exact /= 3
-        #     l2_error /= 3
-        #     max_error /= 3
-            
-        #     rel_l2_error = l2_error / _norm_u_exact
-            
-        #     return rel_l2_error, l2_error, max_error
-        
-        def compute_errors(self, mesh_data, analytical_sol_fn):
+    def compute_errors(self, mesh_data, analytical_sol_fn):
             """Compute errors between numerical and analytical solutions on GPU."""
             rel_l2_error = torch.tensor(0.0, device=device)
             max_error = torch.tensor(0.0, device=device)
@@ -346,7 +311,6 @@ class PINN(nn.Module):
 
             return rel_l2_error.item(), l2_error.item(), max_error.item()
 
-    
     def plot_history(self):
         """Plot training loss history"""
         plt.figure(figsize=(10, 6))
