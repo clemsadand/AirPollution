@@ -47,7 +47,7 @@ def objective(trial):
     try:
         start_time = time.time()
         model.train(batch_sizes, epochs, lr, lambda_weights,
-                    early_stopping_patience=10,
+                    early_stopping_patience=50,
                     early_stopping_min_delta=1e-5)
         rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
         train_time = time.time() - start_time
