@@ -22,6 +22,8 @@ parser.add_argument('--activation', type=str, default="tanh", help='Type of acti
 parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
 parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
 parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
+parser.add_argument('--restore_best_weights', type=bool, default=False, help='Wether to restore best model or not')
+
 #---------------------------------------
 args = parser.parse_args()
 width = args.width
@@ -29,6 +31,7 @@ activation = args.activation
 early_stopping_patience = args.early_stopping_patience
 epochs = args.epochs
 learning_rate = args.learning_rate
+restore_best_weights = args.restore_best_weights
 #---------------------------------------
 exp_dir = f"experimental_results_w{width}_{activation}_patience_{early_stopping_patience}"
 os.makedirs(exp_dir, exist_ok=True)
@@ -96,7 +99,7 @@ for i in range(len(mesh_sizes)):
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
     
     train_time = time.time() - start_time
 
