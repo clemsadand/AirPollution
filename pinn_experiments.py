@@ -71,7 +71,6 @@ for i in range(len(mesh_sizes)):
     #layers
     layers = [3] + [n_neurons[i]] * width + [1]
     
-    patience = patiences[i]
     #generate mesh
     mesh_size = mesh_sizes[i]
     mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
