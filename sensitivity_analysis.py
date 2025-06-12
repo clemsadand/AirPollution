@@ -26,7 +26,7 @@ n_steps = 128
 
 # PINN Hyperparamters
 
-lambda_weights = {{'pde': 3.2, 'ic': 2.5365, 'bc': 2.5365}
+lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
 layers = [3] + [64]*4 + [1]
 epochs = 10000
 lr = 1e-3
@@ -59,8 +59,8 @@ for mesh_size in mesh_sizes:
 		print(f"Running for D = {D}")
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
-		model = pinn.PINN(layers, pproblem, domain, activation="sine").to(device)
-		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=50, early_stopping_min_delta=1e-6)
+		model = pinn.PINN(layers, pproblem, domain, activation="tanh").to(device)
+		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
 		
 		print()
@@ -82,6 +82,8 @@ for mesh_size in mesh_sizes:
 		})
 		print()
 		print("="*50)
+		break
+	break
 
 df_sensitivity_data = pd.DataFrame(sensitivity_data)
 
