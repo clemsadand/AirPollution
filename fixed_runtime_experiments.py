@@ -39,8 +39,8 @@ mesh_sizes = [4, 8, 16, 32, 64]  # Reduced for faster testing
 time_budgets = [30, 60, 120, 180]  # Time budgets in seconds
 
 # PINN settings
-lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
-learning_rate = 1e-3
+lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
+learning_rate = 3e-3
 base_neurons = [2, 4, 8, 16, 32]  # Corresponding to mesh sizes
 
 # CRBE settings

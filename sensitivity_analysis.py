@@ -28,8 +28,8 @@ n_steps = 128
 
 lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
 layers = [3] + [64]*4 + [1]
-epochs = 10000
-lr = 1e-3
+epochs = 20000
+lr = 3e-3
 
 # --- Function to track CPU memory ---
 def get_cpu_memory():
@@ -43,9 +43,12 @@ filename = "experimental_results/df_sensitivity_data.csv"
 
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 
-for mesh_size in mesh_sizes:
+patiences = [500, 500, 500, 1000, 2000]
+
+for j, mesh_size in enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
 	
+	patience = patiences[j]
 	# Create mesh only once
 	mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
 	mesh = meshio.read(mesh_file)
@@ -60,7 +63,7 @@ for mesh_size in mesh_sizes:
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
 		model = pinn.PINN(layers, pproblem, domain, activation="tanh").to(device)
-		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
+		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=patience, early_stopping_min_delta=1e-6)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
 		
 		print()

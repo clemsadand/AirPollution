@@ -40,7 +40,9 @@ epochs = 20000
 n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
+patiences = [500, 500, 500, 1000, 2000]
 activation = "tanh"
+
 
 # --- Logging ---
 n_dofs = []
@@ -60,6 +62,8 @@ for i in range(len(mesh_sizes)):
 
     #layers
     layers = [3] + [n_neurons[i]] * 4 + [1]
+    
+    patience = patiences[i]
     #generate mesh
     mesh_size = mesh_sizes[i]
     mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
@@ -80,7 +84,7 @@ for i in range(len(mesh_sizes)):
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=1000, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=patience, early_stopping_min_delta=1e-6)
     
     train_time = time.time() - start_time
 
