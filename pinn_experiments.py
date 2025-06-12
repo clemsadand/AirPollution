@@ -10,6 +10,15 @@ import psutil
 import pandas as pd
 import os
 
+import argparse
+
+# --- Parse Command Line Arguments ---
+parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
+parser.add_argument('--width=', type=int, default=4, help='Number of hidden layers in the neural network')
+args = parser.parse_args()
+width = args.width
+
+
 torch.manual_seed(1234)
 np.random.seed(1234)
 
@@ -40,9 +49,8 @@ epochs = 20000
 n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
-patiences = [500, 500, 500, 1000, 2000]
-activation = "tanh"
 
+activation = "tanh"
 
 # --- Logging ---
 n_dofs = []
@@ -61,7 +69,7 @@ for i in range(len(mesh_sizes)):
     initial_gpu_memory = get_gpu_memory()
 
     #layers
-    layers = [3] + [n_neurons[i]] * 4 + [1]
+    layers = [3] + [n_neurons[i]] * width + [1]
     
     patience = patiences[i]
     #generate mesh
@@ -84,7 +92,7 @@ for i in range(len(mesh_sizes)):
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=patience, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
     
     train_time = time.time() - start_time
 
@@ -127,5 +135,5 @@ for i in range(len(mesh_sizes)):
 # --- Export Results ---
 df_pinn = pd.DataFrame(pinn_results)
 
-df_pinn.to_csv("experimental_results/df_pinn_training_results.csv")
+df_pinn.to_csv(f"experimental_results/df_pinn_training_results_w{width}.csv")
 print(df_pinn)

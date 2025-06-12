@@ -73,8 +73,7 @@ def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons):
     
     while (time.time() - start_time) < time_budget:
         # Single epoch training
-        epoch_history = model.train(batch_sizes, epochs=1, lr=learning_rate, 
-                                  lambda_weights=lambda_weights)
+        epoch_history = model.train(batch_sizes, epochs=1, lr=learning_rate, lambda_weights=lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
         
         # Store history
         for key in history.keys():

@@ -43,12 +43,9 @@ filename = "experimental_results/df_sensitivity_data.csv"
 
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 
-patiences = [500, 500, 500, 1000, 2000]
-
 for j, mesh_size in enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
-	
-	patience = patiences[j]
+
 	# Create mesh only once
 	mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
 	mesh = meshio.read(mesh_file)
@@ -63,7 +60,7 @@ for j, mesh_size in enumerate(mesh_sizes):
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
 		model = pinn.PINN(layers, pproblem, domain, activation="tanh").to(device)
-		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=patience, early_stopping_min_delta=1e-6)
+		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
 		
 		print()
