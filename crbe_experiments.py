@@ -63,7 +63,7 @@ for i, mesh_size in enumerate(mesh_sizes):
     # final_gpu_memory = torch.cuda.max_memory_allocated() / 1e6 if torch.cuda.is_available() else 0
 
     rel_l2_error, l2_error, max_error = solver.compute_errors(problem.analytical_solution)
-    solver.plot_interpoleted_solution(10.0, mesh_data, problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_crbe")
+    solver.plot_interpolated_solution(analytical_sol_fn=problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_crbe")
     
     # --- Save results ---
     crbe_results.append({

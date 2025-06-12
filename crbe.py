@@ -624,7 +624,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         plt.savefig(f"{save_dir}/error_evolution.png", dpi=300)
         plt.close()
 
-    def plot_interpoleted_solution(self, analytical_sol_fn=None, time_index=None, save_dir="results", name=""):
+    def plot_interpolated_solution(self, analytical_sol_fn=None, time_index=None, save_dir="results", name=""):
         """
         Plot solution at specified time index.
         
@@ -754,5 +754,5 @@ if __name__ == '__main__':
 
     print(f"Max Error: {max_error:0.4f}")
 
-    solver1.plot_interpoleted_solution()
+    solver1.plot_interpolated_solution()
     solver1.plot_solution()

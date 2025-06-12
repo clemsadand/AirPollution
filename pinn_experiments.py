@@ -89,10 +89,10 @@ for i in range(len(mesh_sizes)):
     result_history[f"mesh_size_{mesh_size}"] = history
 
     rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
-		
-		model.plot_interpoleted_solution(analytical_sol_fn=problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_pinn")
-		
-		model.plot_history(save_dir="experimental_results", name="ms{mesh_size}_pinn")
+    
+    model.plot_interpolated_solution(10.0, mesh_data, analytical_sol_fn=problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_pinn")
+    
+    model.plot_history(save_dir="experimental_results", name="ms{mesh_size}_pinn")
 		
     pinn_results.append({
         "mesh_size": mesh_size,

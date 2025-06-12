@@ -21,12 +21,12 @@ print(f"Using device: {device}")
 domain = pinn.Domain()
 
 domain_size = 20
-n_steps = 10
+n_steps = 128
 #mesh_size = 64
 
 # PINN Hyperparamters
 
-lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
+lambda_weights = {{'pde': 3.2, 'ic': 2.5365, 'bc': 2.5365}
 layers = [3] + [64]*4 + [1]
 epochs = 10000
 lr = 1e-3
@@ -41,7 +41,7 @@ sensitivity_data = []
 
 filename = "experimental_results/df_sensitivity_data.csv"
 
-mesh_sizes = [4, 8, 16, 32, 64]
+mesh_sizes = [4, 8, 16, 32, 64, 128]
 
 for mesh_size in mesh_sizes:
 	print(f"Training for mesh size {mesh_size} ...")
@@ -59,7 +59,7 @@ for mesh_size in mesh_sizes:
 		print(f"Running for D = {D}")
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
-		model = pinn.PINN(layers, pproblem, domain).to(device)
+		model = pinn.PINN(layers, pproblem, domain, activation="sine").to(device)
 		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=50, early_stopping_min_delta=1e-6)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
 		
