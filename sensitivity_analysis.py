@@ -85,8 +85,8 @@ for j, mesh_size in enumerate(mesh_sizes):
 		})
 		print()
 		print("="*50)
-		break
-	break
+		#break
+	#break
 
 df_sensitivity_data = pd.DataFrame(sensitivity_data)
 
