@@ -22,7 +22,6 @@ domain_size = 20.0
 
 domain = crbe.Domain()
 problem = crbe.Problem()
-exact_sol_fn = problem.analytical_solution
 
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_steps = 128
@@ -56,7 +55,6 @@ for i, mesh_size in enumerate(mesh_sizes):
     solver = crbe.BESCRFEM(domain, problem, mesh_data, cr_element, time_scheme_order=1) 
 
     solver.solve()
-    rel_l2_error, l2_error, max_error = solver.compute_errors(exact_sol_fn)
     train_time = time.time() - start_time
 
     # --- Memory tracking after solve ---
@@ -64,6 +62,9 @@ for i, mesh_size in enumerate(mesh_sizes):
     final_cpu_memory = get_cpu_memory()
     # final_gpu_memory = torch.cuda.max_memory_allocated() / 1e6 if torch.cuda.is_available() else 0
 
+    rel_l2_error, l2_error, max_error = solver.compute_errors(problem.analytical_solution)
+    solver.plot_interpoleted_solution(10.0, mesh_data, problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_crbe")
+    
     # --- Save results ---
     crbe_results.append({
         "mesh_size": mesh_size,

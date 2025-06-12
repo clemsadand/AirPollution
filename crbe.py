@@ -624,7 +624,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         plt.savefig(f"{save_dir}/error_evolution.png", dpi=300)
         plt.close()
 
-    def plot_interpoleted_solution(self, analytical_sol_fn=None, time_index=None, save_dir="results"):
+    def plot_interpoleted_solution(self, analytical_sol_fn=None, time_index=None, save_dir="results", name=""):
         """
         Plot solution at specified time index.
         
@@ -709,10 +709,10 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
             fig.colorbar(cntr1, ax=ax)
             
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/solution_t{time_index}_interpolated.png", dpi=300)
-        plt.savefig(f"{save_dir}/solution_t{time_index}_interpolated.pdf", dpi=300)
+        plt.savefig(f"{save_dir}/solution_t{time_index}_interpolated_{name}.png", dpi=300)
+        plt.savefig(f"{save_dir}/solution_t{time_index}_interpolated_{name}.pdf", dpi=300)
         plt.close()
-        print(f"Saved at {save_dir}/solution_t{time_index}_interpolated.png/pdf")
+        print(f"Saved at {save_dir}/solution_t{time_index}_interpolated_{name}.png/pdf")
         
 
 

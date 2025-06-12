@@ -317,7 +317,7 @@ class PINN(nn.Module):
 
             return rel_l2_error.item(), l2_error.item(), max_error.item()
 
-    def plot_history(self, save_dir="results"):
+    def plot_history(self, save_dir="results", name=""):
         """Plot training loss history"""
         plt.figure(figsize=(10, 6))
         plt.semilogy(self.history['total_loss'], label='Total Loss', ls="-.")
@@ -329,8 +329,8 @@ class PINN(nn.Module):
         plt.title('Training Loss History')
         plt.legend()
         plt.grid(True, which="both", ls="--")
-        plt.savefig(f"{save_dir}/loss_history.pdf", dpi=500)
-        plt.savefig(f"{save_dir}/loss_history.png", dpi=500)
+        plt.savefig(f"{save_dir}/loss_history_{name}.pdf", dpi=500)
+        plt.savefig(f"{save_dir}/loss_history_{name}.png", dpi=500)
         plt.tight_layout()
         plt.close()
     
@@ -384,7 +384,7 @@ class PINN(nn.Module):
         
         print(f"Saved at {save_dir}/solution_{t}.pdf-png")
         
-    def plot_interpolated_solution(self, t, mesh_data, analytical_sol_fn=None, save_dir="results"):
+    def plot_interpolated_solution(self, t, mesh_data, analytical_sol_fn=None, save_dir="results", name=""):
         """Plot error evolution over time."""
         os.makedirs(save_dir, exist_ok=True)
         
@@ -449,11 +449,11 @@ class PINN(nn.Module):
             fig.colorbar(cntr1, ax=ax)
         
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf", dpi=500)
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{t}_{self.activation}.png", dpi=500)
+        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{name}.pdf", dpi=500)
+        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{name}.png", dpi=500)
         plt.close()
         
-        print(f"Saved at {save_dir}/pinn_interpolated_solution_{t}_{self.activation}.pdf-png")
+        print(f"Saved at {save_dir}/pinn_interpolated_solution_{name}.pdf-png")
 
 
 

@@ -34,8 +34,8 @@ problem = pinn.Problem()
 
 # --- Experimental Settings ---
 domain_size = 20
-lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
-learning_rate = 1e-3
+lambda_weights = {'pde': 3.2, 'ic': 2.5365, 'bc': 2.5365}
+learning_rate = 4e-3
 epochs = 20000
 n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
@@ -75,11 +75,11 @@ for i in range(len(mesh_sizes)):
     n_col = mesh_data.number_of_segments - n_ic - n_bc
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
-    model = pinn.PINN(layers, problem, domain)
+    model = pinn.PINN(layers, problem, domain, activation="sine")
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
     
     train_time = time.time() - start_time
 
@@ -89,7 +89,11 @@ for i in range(len(mesh_sizes)):
     result_history[f"mesh_size_{mesh_size}"] = history
 
     rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
-
+		
+		model.plot_interpoleted_solution(analytical_sol_fn=problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_pinn")
+		
+		model.plot_history(save_dir="experimental_results", name="ms{mesh_size}_pinn")
+		
     pinn_results.append({
         "mesh_size": mesh_size,
         "n_dofs": mesh_data.number_of_segments,
