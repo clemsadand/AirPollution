@@ -136,11 +136,11 @@ for i in range(len(mesh_sizes)):
 
     del model
     if mesh_size >=64:
-        pd.DataFrame(pinn_results).to_csv("experimental_results/df_pinn_training_results.csv")
+        pd.DataFrame(pinn_results).to_csv(f"{exp_dir}/df_pinn_training_results.csv")
     # break
 
 # --- Export Results ---
 df_pinn = pd.DataFrame(pinn_results)
 
-df_pinn.to_csv("experimental_results/df_pinn_training_results.csv")
+df_pinn.to_csv(f"{exp_dir}/df_pinn_training_results.csv")
 print(df_pinn)
