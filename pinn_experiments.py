@@ -14,7 +14,7 @@ import argparse
 
 # --- Parse Command Line Arguments ---
 parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
-parser.add_argument('--width=', type=int, default=4, help='Number of hidden layers in the neural network')
+parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 args = parser.parse_args()
 width = args.width
 
