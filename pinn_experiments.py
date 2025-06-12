@@ -22,7 +22,7 @@ width = args.width
 torch.manual_seed(1234)
 np.random.seed(1234)
 
-os.makedirs("experimental_results", exist_ok=True)
+os.makedirs("experimental_results_w{width}", exist_ok=True)
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -135,5 +135,5 @@ for i in range(len(mesh_sizes)):
 # --- Export Results ---
 df_pinn = pd.DataFrame(pinn_results)
 
-df_pinn.to_csv(f"experimental_results/df_pinn_training_results_w{width}.csv")
+df_pinn.to_csv("experimental_results/df_pinn_training_results.csv")
 print(df_pinn)
