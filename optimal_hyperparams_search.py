@@ -16,19 +16,10 @@ domain = pinn.Domain()
 problem = pinn.Problem()
 domain_size = 20
 n_steps = 128
-mesh_size = 64
+mesh_sizes = [64, 128]
 
-# Create mesh only once
-mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
-mesh = meshio.read(mesh_file)
-mesh_data = crbe.MeshData(mesh, domain, nt=n_steps)
 
-n_ic = round(0.2 * mesh_data.number_of_segments)
-n_bc = n_ic
-n_col = mesh_data.number_of_segments - n_ic - n_bc
-batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-
-epochs = 10
+epochs = 200
 
 def objective(trial):
     # Sample hyperparameters
@@ -57,6 +48,18 @@ def objective(trial):
         print(f"Trial failed: {e}")
         return float("inf")  # Penalize failures
 
+for mesh_size in mesh_sizes:
+# Create mesh only once
+mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
+mesh = meshio.read(mesh_file)
+mesh_data = crbe.MeshData(mesh, domain, nt=n_steps)
+
+n_ic = round(0.2 * mesh_data.number_of_segments)
+n_bc = n_ic
+n_col = mesh_data.number_of_segments - n_ic - n_bc
+batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
+
+
 study = optuna.create_study(direction="minimize", study_name="pinn-hpo")
 #study.optimize(objective, n_trials=100)  # You can increase this later
 study.optimize(objective, n_trials=100, n_jobs=os.cpu_count())
@@ -64,7 +67,7 @@ study.optimize(objective, n_trials=100, n_jobs=os.cpu_count())
 # Save results
 import pandas as pd
 df_results = study.trials_dataframe()
-df_results.to_csv("optuna_pinn_results.csv", index=False)
+df_results.to_csv("optuna_pinn_results_{mesh_size}.csv", index=False)
 
 # Show best hyperparameters
 print("Best trial:")
