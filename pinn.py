@@ -183,7 +183,7 @@ class PINN(nn.Module):
         
         return grad_t + v_dot_grad - self.problem.D * laplacian_xy - source
     
-    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6, mini_batch_size=None):
+    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6, mini_batch_size=None, restore_best_weights=True):
         """Train the PINNusing Latin Hypercube sampling for collocation points"""
         optimizer = optim.Adam(self.parameters(), lr=lr)
         
@@ -193,7 +193,7 @@ class PINN(nn.Module):
         early_stopping = EarlyStopping(
             patience=early_stopping_patience, 
             min_delta=early_stopping_min_delta,
-            restore_best_weights=True
+            restore_best_weights=restore_best_weights
         )
         
         # Create history to track losses
