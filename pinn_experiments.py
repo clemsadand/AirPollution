@@ -22,7 +22,8 @@ width = args.width
 torch.manual_seed(1234)
 np.random.seed(1234)
 
-os.makedirs("experimental_results_w{width}", exist_ok=True)
+exp_dir = f"experimental_results_w{width}"
+os.makedirs(, exist_ok=True)
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -91,7 +92,7 @@ for i in range(len(mesh_sizes)):
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
     
     train_time = time.time() - start_time
 
@@ -102,9 +103,9 @@ for i in range(len(mesh_sizes)):
 
     rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
     
-    model.plot_interpolated_solution(10.0, mesh_data, analytical_sol_fn=problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_pinn")
+    model.plot_interpolated_solution(10.0, mesh_data, analytical_sol_fn=problem.analytical_solution, save_dir=exp_dir, name=f"ms{mesh_size}_pinn")
     
-    model.plot_history(save_dir="experimental_results", name=f"ms{mesh_size}_pinn")
+    model.plot_history(save_dir=exp_dir, name=f"ms{mesh_size}_pinn")
 		
     pinn_results.append({
         "mesh_size": mesh_size,
