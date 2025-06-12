@@ -9,21 +9,29 @@ import torch
 import psutil
 import pandas as pd
 import os
-
 import argparse
+
+# Reproducibility
+np.random.seed(1234)
+torch.manual_seed(1234)
 
 # --- Parse Command Line Arguments ---
 parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
+parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
+parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
+parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
+parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
+#---------------------------------------
 args = parser.parse_args()
 width = args.width
-
-
-torch.manual_seed(1234)
-np.random.seed(1234)
-
-exp_dir = f"experimental_results_w{width}"
-os.makedirs(, exist_ok=True)
+activation = args.activation
+early_stopping_patience = args.early_stopping_patience
+epochs = args.epochs
+learning_rate = args.learning_rate
+#---------------------------------------
+exp_dir = f"experimental_results_w{width}_{activation}_patience_{early_stopping_patience}"
+os.makedirs(exp_dir, exist_ok=True)
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -45,13 +53,9 @@ problem = pinn.Problem()
 # --- Experimental Settings ---
 domain_size = 20
 lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
-learning_rate = 3e-3
-epochs = 20000
 n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
-
-activation = "tanh"
 
 # --- Logging ---
 n_dofs = []
@@ -92,7 +96,7 @@ for i in range(len(mesh_sizes)):
 
     print(f"Training for mesh size {mesh_size} ...")
     start_time = time.time()
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6)
     
     train_time = time.time() - start_time
 
