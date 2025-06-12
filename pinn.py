@@ -35,6 +35,16 @@ class Swish(nn.Module):
 
 # self.activation = Swish()
 
+class AdaptiveTanh(nn.Module):
+    def __init__(self, size):
+        """One adaptive parameter (alpha) per neuron in the layer"""
+        super().__init__()
+        self.alpha = nn.Parameter(torch.ones(size))  # Start with α=1 for each neuron
+
+    def forward(self, x):
+        return torch.tanh(self.alpha * x)
+
+
 #Class de base pour les problêmes d'advection-diffusion avec params constants
 
 class AdDifProblem(abc.ABC):
@@ -128,7 +138,7 @@ class EarlyStopping:
 
 # Define the PINN model
 class PINN(nn.Module):
-    def __init__(self, layers, problem, domain, activation="tanh"):
+    def __init__(self, layers, problem, domain, activation="adaptive_tanh"):
         super(PINN, self).__init__()
         self.problem = problem
         self.domain = domain
@@ -136,28 +146,30 @@ class PINN(nn.Module):
         self.t_range = [0, domain.T]
         
         # Build the neural network
-        if activation == "tanh":
-            self.activation = nn.Tanh()
-        elif activation == "sine":
-            self.activation = Sine()
-        elif activation == "swish":
-            self.activation = Swish()
-        else:
-        		raise ValueError(f"Activation function {activation} not implemented")
             
         self.loss_function = nn.MSELoss(reduction='mean')
         
         # Create layers
         layer_list = []
         for i in range(len(layers)-2):
-            layer_list.append(nn.Linear(layers[i], layers[i+1]))
+            layer = nn.Linear(layers[i], layers[i+1])
+            layer_list.append(layer)
             # Weight initialization
-            nn.init.xavier_normal_(layer_list[-1].weight)
-            nn.init.zeros_(layer_list[-1].bias)
+            nn.init.xavier_normal_(layer.weight)
+            nn.init.zeros_(layer.bias)
             #Adding Activation
-            layer_list.append(self.activation)
-        layer_list.append(nn.Linear(layers[-2], layers[-1]))
+            if activation == "adaptive_tanh":
+            	layer_list.append(AdaptiveTanh(layers[i+1]))
+            elif activation == "tanh":
+            	layer_list.append(nn.Tanh())
+            elif activation == "sine":
+            	layer_list.append(Sine())
+            elif activation == "swish":
+            	layer_list.append(Swish())
+            else:
+            	raise ValueError(f"Activation function {activation} not implemented")
         
+        layer_list.append(nn.Linear(layers[-2], layers[-1]))
         self.model = nn.Sequential(*layer_list)
         
         # Move model to device
@@ -584,7 +596,7 @@ if __name__ == "__main__":
     lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
     
     lr = 1e-3
-    epochs = 2
+    epochs = 500
     
     pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
     
@@ -597,3 +609,8 @@ if __name__ == "__main__":
     print()
     
     pinn.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
+    
+    for name, param in pinn.named_parameters():
+    	if "alpha" in name:
+    		print(name, param.data)
+
