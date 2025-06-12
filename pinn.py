@@ -21,6 +21,10 @@ np.random.seed(1234)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
+save_dir = "results"
+os.makedirs(save_dir, exist_ok=True)
+# ---------------------------------------------
+
 # Sine activation 
 class Sine(nn.Module):
     def forward(self, x):
@@ -348,7 +352,6 @@ class PINN(nn.Module):
     
     def plot_solution(self, t, mesh_data, analytical_sol_fn=None, save_dir="results"):
         """Plot error evolution over time."""
-        os.makedirs(save_dir, exist_ok=True)
         
         points = torch.tensor(mesh_data.points[:, 0:2], dtype=torch.float32, device=device)
         triangles = mesh_data.triangles
