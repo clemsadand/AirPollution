@@ -603,12 +603,12 @@ if __name__ == "__main__":
     n_bc = n_ic
     n_col = mesh_data.number_of_segments - n_ic - n_bc
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-    lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
+    lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}#60, 40, 100); (150, 40, 80); (180, 60, 80)
     
     lr = 1e-3
-    epochs = 2000
+    epochs = 4000
     
-    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=1000, early_stopping_min_delta=1e-6)
     
     #xy = torch.tensor([[1.5, 3], [5, 4]], device=device, requires_grad=True)
     

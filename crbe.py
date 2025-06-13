@@ -529,7 +529,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
             
             # compute pointwise max error on this triangle
             local_max_error = np.max(np.abs(u_num_midpoints - u_exact_midpoints))
-            max_error = np.max(max_error, local_max_error)
+            max_error = max(max_error, local_max_error)
             #max_error = max(max_error, local_error)
          
         _norm_u_exact /= 3
