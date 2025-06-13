@@ -186,7 +186,8 @@ class PINN(nn.Module):
     def compute_pde_residual(self, xyt):
         """Compute the PDE residual: dc/dt + v·∇c - D·∆c - f"""
         D = xyt.shape[1]
-        xyt.requires_grad_(True)
+        #xyt.requires_grad_(True)
+        xyt = xyt.clone().detach().requires_grad_(True)
         
         c = self.forward(xyt)
         grad_xy, grad_t, laplacian_xy = compute_gradient_and_laplacian_xy(c, xyt)
@@ -324,11 +325,16 @@ class PINN(nn.Module):
 
                 l2_error += local_error
                 _norm_u_exact += local_norm_u_exact
-                max_error = torch.maximum(max_error, local_error)
-
+                
+                # compute pointwise max error on this triangle
+                local_max_error = torch.max(torch.abs(u_num_midpoints - u_exact_midpoints))
+                max_error = torch.maximum(max_error, local_max_error)
+                
+                #max_error = torch.maximum(max_error, local_error)
+                
             _norm_u_exact /= 3
             l2_error /= 3
-            max_error /= 3
+            #max_error /= 3
 
             rel_l2_error = l2_error / (_norm_u_exact + 1e-12)  # avoid division by zero
 
@@ -587,7 +593,7 @@ if __name__ == "__main__":
     layers = [3] + [32] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
     pinn = PINN(layers, problem, domain).to(device)
 
-    xyt = torch.tensor([[1.0, 0.1, 0.0]], device=device, requires_grad=True)  # Shape: (1, 3)
+    #xyt = torch.tensor([[1.0, 0.1, 0.0]], device=device, requires_grad=True)  # Shape: (1, 3)
 
     # Compute residual
     #residual = pinn.compute_pde_residual(xyt)
@@ -600,7 +606,7 @@ if __name__ == "__main__":
     lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
     
     lr = 1e-3
-    epochs = 500
+    epochs = 2000
     
     pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
     
@@ -614,7 +620,7 @@ if __name__ == "__main__":
     
     pinn.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
     
-    for name, param in pinn.named_parameters():
-    	if "alpha" in name:
-    		print(name, param.data)
+    #for name, param in pinn.named_parameters():
+    #	if "alpha" in name:
+    #		print(name, param.data)
 

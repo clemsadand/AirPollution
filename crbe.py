@@ -526,11 +526,15 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
             #cumule des normes
             l2_error += local_error
             _norm_u_exact += local_norm_u_exact
-            max_error = max(max_error, local_error)
+            
+            # compute pointwise max error on this triangle
+            local_max_error = np.max(np.abs(u_num_midpoints - u_exact_midpoints))
+            max_error = np.max(max_error, local_max_error)
+            #max_error = max(max_error, local_error)
          
         _norm_u_exact /= 3
         l2_error /= 3
-        max_error /= 3
+        #max_error /= 3
         
         rel_l2_error = l2_error / _norm_u_exact
         
