@@ -70,6 +70,8 @@ def objective(trial):
 
     try:
         start_time = time.time()
+        print(f"\nDevice: {next(model.parameters()).device}\n")
+
         model.train(batch_sizes, epochs, lr, lambda_weights,
                     early_stopping_patience=1000,
                     early_stopping_min_delta=1e-7,
