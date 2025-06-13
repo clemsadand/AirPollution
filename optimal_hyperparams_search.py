@@ -8,6 +8,8 @@ import meshio
 import os
 import time
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # Reproducibility
 np.random.seed(1234)
 torch.manual_seed(1234)
@@ -28,17 +30,18 @@ n_ic = round(0.2 * mesh_data.number_of_segments)
 n_bc = n_ic
 n_col = mesh_data.number_of_segments - n_ic - n_bc
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-epochs = 100
+epochs = 200
 #*****************
 activation = 'tanh'
 depth = 4
+width = 16
 
 
 def objective(trial):
-    # Sample hyperparameters
+    # Sample hyperparameterss
     #depth = trial.suggest_int('depth', 3, 6)
-    width = trial.suggest_categorical('width', [16, 32, 64])
-    lr = trial.suggest_float('lr', 1e-4, 5e-3, log=True)
+    #width = trial.suggest_categorical('width', [8, 16, 32, 64, 128])
+    lr = trial.suggest_float('lr', 1e-4, 5e-1, log=True)
     lambda_pde = trial.suggest_float('lambda_pde', 0.1, 10.0, log=True)
     lambda_ic_bc = trial.suggest_float('lambda_ic_bc', 0.1, 10.0, log=True)
     #activation = trial.suggest_categorical('activation', ['tanh', 'sine', 'swish'])
@@ -46,7 +49,7 @@ def objective(trial):
     # Build model
     layers = [3] + [width] * depth + [1]
     lambda_weights = {'pde': lambda_pde, 'ic': lambda_ic_bc, 'bc': lambda_ic_bc}
-    model = pinn.PINN(layers, problem, domain, activation=activation)
+    model = pinn.PINN(layers, problem, domain, activation=activation).to(device)
 
     try:
         start_time = time.time()
@@ -65,7 +68,7 @@ def objective(trial):
 start_ = time.time()
 study = optuna.create_study(direction="minimize", study_name="pinn-hpo")
 #study.optimize(objective, n_trials=100)  # You can increase this later
-study.optimize(objective, n_trials=100, n_jobs=os.cpu_count())
+study.optimize(objective, n_trials=20, n_jobs=os.cpu_count())
 end_ = time.time()
 
 

@@ -29,7 +29,7 @@ n_col = mesh_data.number_of_segments - n_ic - n_bc
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
 
-layers = [3] + [32] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
+layers = [3] + [16] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
 model = pinn.PINN(layers, problem, domain).to(device)
 
 # Compute residual
@@ -37,13 +37,13 @@ n_ic = round(0.2 * mesh_data.number_of_segments)
 n_bc = n_ic
 n_col = mesh_data.number_of_segments - n_ic - n_bc
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
+lambda_weights = {'pde': 1.4990615182382665, 'ic': 0.49929070971734624, 'bc': 0.49929070971734624}
     
-lr = 3e-3
-epochs = 10000
+lr = 0.008257554820761981
+epochs = 4000
     
-model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=10000, early_stopping_min_delta=1e-6, restore_best_weights=False)
-    
+model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6, restore_best_weights=False)
+
 model.plot_history()
     
 errors = model.compute_errors(mesh_data, problem.analytical_solution)

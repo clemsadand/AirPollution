@@ -8,6 +8,8 @@ import meshio
 import os
 import time
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # Reproducibility
 np.random.seed(1234)
 torch.manual_seed(1234)
@@ -48,7 +50,7 @@ def objective(trial):
     for width in widths:
         try:
             layers = [3] + [width] * depth + [1]
-            model = pinn.PINN(layers, problem, domain, activation=activation)
+            model = pinn.PINN(layers, problem, domain, activation=activation).to(device)
 
             model.train(batch_sizes, epochs, lr, lambda_weights,
                         early_stopping_patience=100,
