@@ -51,12 +51,12 @@ def objective(trial):
         start_time = time.time()
         model.train(batch_sizes, epochs, lr, lambda_weights,
                     early_stopping_patience=10,
-                    early_stopping_min_delta=1e-5,
+                    early_stopping_min_delta=1e-7,
                     restore_best_weights=True)
         rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
         train_time = time.time() - start_time
         trial.set_user_attr("train_time", train_time)
-        return l2_error + max_error - 1e-5  # Objective to minimize
+        return abs(l2_error + max_error - 1e-5)  # Objective to minimize
     except Exception as e:
         print(f"Trial failed: {e}")
         return float("inf")  # Penalize failures
