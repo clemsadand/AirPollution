@@ -261,11 +261,12 @@ class PINN(nn.Module):
             )
             
             # Total loss
+            total_lambda_weight = lambda_weights['pde'] + lambda_weights['ic'] + lambda_weights['bc']
             total_loss = (
                 lambda_weights['pde'] * pde_loss + 
                 lambda_weights['ic'] * ic_loss + 
                 lambda_weights['bc'] * bc_loss
-            )
+            ) / total_lambda_weight
             
             # Backward pass and optimization
             total_loss.backward()
