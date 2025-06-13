@@ -31,8 +31,15 @@ epochs = args.epochs
 #learning_rate = args.learning_rate
 # ------------------------------------
 
-exp_dir = f"experimental_results_sensibility_analysis"
-os.makedirs(exp_dir, exist_ok=True)
+base_dir = f"experimental_results_sensibility_analysis"
+
+# Check if the directory exists
+if os.path.exists(base_dir):
+    # Append current date and time to create a new unique folder
+    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    exp_dir = f"{base_dir}_{date_str}"
+else:
+    exp_dir = base_dir
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
