@@ -14,7 +14,8 @@ import os
 torch.manual_seed(1234)
 np.random.seed(1234)
 
-os.makedirs("experimental_results", exist_ok=True)
+exp_dir = "crbe_experimental_results"
+os.makedirs(exp_dir, exist_ok=True)
 
 
 # --- Problem Setup ---
@@ -34,14 +35,6 @@ def get_cpu_memory():
 
 # --- Loop over mesh sizes ---
 for i, mesh_size in enumerate(mesh_sizes):
-    # --- Prepare for memory tracking ---
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
-
-    # initial_gpu_memory = get_gpu_memory()
-    initial_cpu_memory = get_cpu_memory()
 
     print(f"Training for mesh size = {mesh_size} ...")
     start_time = time.time()
@@ -54,6 +47,15 @@ for i, mesh_size in enumerate(mesh_sizes):
     
     solver = crbe.BESCRFEM(domain, problem, mesh_data, cr_element, time_scheme_order=1) 
 
+    #-- Prepare for memory tracking ---
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+
+    # initial_gpu_memory = get_gpu_memory()
+    initial_cpu_memory = get_cpu_memory()
+    
     solver.solve()
     train_time = time.time() - start_time
 
@@ -63,7 +65,7 @@ for i, mesh_size in enumerate(mesh_sizes):
     # final_gpu_memory = torch.cuda.max_memory_allocated() / 1e6 if torch.cuda.is_available() else 0
 
     rel_l2_error, l2_error, max_error = solver.compute_errors(problem.analytical_solution)
-    solver.plot_interpolated_solution(analytical_sol_fn=problem.analytical_solution, save_dir="experimental_results", name=f"ms{mesh_size}_crbe")
+    solver.plot_interpolated_solution(analytical_sol_fn=problem.analytical_solution, save_dir=exp_dir, name=f"ms{mesh_size}_crbe")
     
     # --- Save results ---
     crbe_results.append({
@@ -89,5 +91,5 @@ for i, mesh_size in enumerate(mesh_sizes):
 
 # --- Results as DataFrame ---
 df_crbe = pd.DataFrame(crbe_results)
-df_crbe.to_csv("experimental_results/df_crbe_training_results.csv")
+df_crbe.to_csv(f"{exp_dir}/df_crbe_training_results.csv")
 df_crbe

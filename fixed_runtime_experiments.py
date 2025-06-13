@@ -15,7 +15,12 @@ import matplotlib.pyplot as plt
 torch.manual_seed(1234)
 np.random.seed(1234)
 
-os.makedirs("experimental_results", exist_ok=True)
+# Check if GPU is available
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+
+save_dir = "experimental_results_fixed_runtime"
+os.makedirs(save_dir, exist_ok=True)
 
 # --- Memory tracking functions ---
 def get_gpu_memory():
@@ -39,14 +44,15 @@ mesh_sizes = [4, 8, 16, 32, 64]  # Reduced for faster testing
 time_budgets = [30, 60, 120, 180]  # Time budgets in seconds
 
 # PINN settings
-lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
-learning_rate = 3e-3
+lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}
+#learning_rate = 3e-3
+lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
 base_neurons = [2, 4, 8, 16, 32]  # Corresponding to mesh sizes
 
 # CRBE settings
 cr_element = crbe.ElementCR()
 
-def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons):
+def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons, lr):
     """Run PINN training for a fixed time budget"""
     layers = [3] + [n_neurons] * 4 + [1]
     
@@ -56,7 +62,7 @@ def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons):
     n_col = mesh_data.number_of_segments - n_ic - n_bc
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
     
-    model = pinn.PINN(layers, problem_pinn, domain_pinn)
+    model = pinn.PINN(layers, problem_pinn, domain_pinn).to(device)
     
     # Track memory
     if torch.cuda.is_available():
@@ -73,7 +79,7 @@ def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons):
     
     while (time.time() - start_time) < time_budget:
         # Single epoch training
-        epoch_history = model.train(batch_sizes, epochs=1, lr=learning_rate, lambda_weights=lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+        epoch_history = model.train(batch_sizes, epochs=1, lr=lr, lambda_weights=lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
         
         # Store history
         for key in history.keys():
@@ -168,13 +174,14 @@ for mesh_idx, mesh_size in enumerate(mesh_sizes):
     mesh_data = crbe.MeshData(mesh, domain_crbe, nt=n_steps)
     
     n_neurons = base_neurons[mesh_idx]
+    lr = lr_list[mesh_idx]
     
     for time_budget in time_budgets:
         print(f"\nTime Budget: {time_budget}s")
         print("-" * 30)
         
         # Run PINN
-        pinn_result = run_pinn_with_time_budget(mesh_data, time_budget, n_neurons)
+        pinn_result = run_pinn_with_time_budget(mesh_data, time_budget, n_neurons, lr)
         pinn_result.update({
             "mesh_size": mesh_size,
             "time_budget": time_budget,
@@ -201,12 +208,12 @@ for mesh_idx, mesh_size in enumerate(mesh_sizes):
 
 # --- Save Results ---
 df_results = pd.DataFrame(all_results)
-df_results.to_csv("experimental_results/fixed_runtime_comparison.csv", index=False)
+df_results.to_csv(f"{save_dir}/fixed_runtime_comparison.csv", index=False)
 
 print(f"\n{'='*50}")
 print("EXPERIMENT COMPLETED")
 print(f"{'='*50}")
-print(f"Results saved to: experimental_results/fixed_runtime_comparison.csv")
+print(f"Results saved to: {save_dir}/fixed_runtime_comparison.csv")
 print(f"Total experiments: {len(all_results)}")
 
 # --- Display Summary ---
@@ -217,11 +224,12 @@ summary_stats = df_results.groupby(['method', 'time_budget']).agg({
     'epochs_completed': 'mean'
 }).round(6)
 
+summary_stats.to_csv(f"{save_dir}/fixed_runtime_summary_stats.csv")
 print(summary_stats)
 
 # --- Quick Visualization ---
 try:
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(16, 10))
     
     # Plot 1: Error vs Time Budget
     plt.subplot(2, 2, 1)
@@ -273,11 +281,11 @@ try:
     plt.legend()
     
     plt.tight_layout()
-    plt.savefig('experimental_results/fixed_runtime_comparison_plots.png', dpi=500, bbox_inches='tight')
-    plt.savefig('experimental_results/fixed_runtime_comparison_plots.pdf', dpi=500, bbox_inches='tight')
+    plt.savefig(f'{save_dir}/fixed_runtime_comparison_plots.png', dpi=500, bbox_inches='tight')
+    plt.savefig(f'{save_dir}/fixed_runtime_comparison_plots.pdf', dpi=500, bbox_inches='tight')
     plt.show()
     
-    print("\nPlots saved to: experimental_results/fixed_runtime_comparison_plots.png")
+    print(f"\nPlots saved to: {save_dir}/fixed_runtime_comparison_plots.png")
     
 except Exception as e:
     print(f"Plotting failed: {e}")

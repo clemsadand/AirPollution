@@ -19,8 +19,9 @@ torch.manual_seed(1234)
 parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
-parser.add_argument('--restore_best_weights', type=bool, default=False, help='Wether to restore best model or not')
+#parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
+parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
+parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
 
 #---------------------------------------
 args = parser.parse_args()
@@ -28,9 +29,11 @@ width = args.width
 activation = args.activation
 early_stopping_patience = args.early_stopping_patience
 restore_best_weights = args.restore_best_weights
+epochs = args.epochs
 
 #---------------------------------------
-exp_dir = f"experimental_results"
+exp_dir = f"pinn_experimental_results_w{width}"
+os.makedirs(exp_dir, exist_ok=True)
 os.makedirs(exp_dir, exist_ok=True)
 
 # Check if GPU is available
@@ -59,17 +62,16 @@ n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
 
-epochs = 10000
 epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
-layers_list = [
-    [6],
-    [12, 8],
-    [24, 16],
-    [48, 32, 16],
-    [96, 64, 32],
-    [192, 128, 64, 32],   
-]
+# layers_list = [
+#     [6],
+#     [12, 8],
+#     [24, 16],
+#     [48, 32, 16],
+#     [96, 64, 32],
+#     [192, 128, 64, 32],   
+# ]
 
 # logging
 n_dofs = []
@@ -79,11 +81,6 @@ result_history = {}
 
 # --- Main Loop ---
 for i in range(len(mesh_sizes)):
-    
-    # Reset GPU memory tracking
-    if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
-        torch.cuda.empty_cache()
 
     # Hyperparameters' setup
     #layers = [3] + layers_list[i] + [1]
@@ -115,10 +112,15 @@ for i in range(len(mesh_sizes)):
 
     start_time = time.time()
 
+    # Reset memory tracking
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
     initial_cpu_memory = get_cpu_memory()
     initial_gpu_memory = get_gpu_memory()
 
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=True)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
     
     train_time = time.time() - start_time
 

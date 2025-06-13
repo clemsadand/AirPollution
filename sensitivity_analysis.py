@@ -16,22 +16,22 @@ torch.manual_seed(1234)
 # --- Parse Command Line Arguments ---
 parser = argparse.ArgumentParser(description="PINN experiment with configurable network.")
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
-parser.add_argument('--depth', type=int, default=64, help='Number of neurons per layers in the neural network')
+#parser.add_argument('--depth', type=int, default=64, help='Number of neurons per layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
+parser.add_argument('--epochs', type=int, default=10000, help='Number of epochs')
 parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
-parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
+#parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
 #-------------------------------------
 args = parser.parse_args()
 width = args.width
-depth = args.depth
+#depth = args.depth
 activation = args.activation
 early_stopping_patience = args.early_stopping_patience
 epochs = args.epochs
-learning_rate = args.learning_rate
+#learning_rate = args.learning_rate
 # ------------------------------------
 
-exp_dir = f"experimental_results_w{width}_{activation}_patience_{early_stopping_patience}"
+exp_dir = f"experimental_results_sensibility_analysis"
 os.makedirs(exp_dir, exist_ok=True)
 
 # Check if GPU is available
@@ -47,8 +47,8 @@ n_steps = 128
 
 # PINN Hyperparamters
 
-lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
-layers = [3] + [depth] * width + [1]
+lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}
+#layers = [3] + [depth] * width + [1]
 
 
 # --- Function to track CPU memory ---
@@ -62,10 +62,18 @@ sensitivity_data = []
 filename = f"{exp_dir}/df_sensitivity_data.csv"
 
 mesh_sizes = [4, 8, 16, 32, 64, 128]
+n_neurons = [2, 4, 8, 16, 32, 64]
+lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
+epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
 
 for j, mesh_size in enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
 
+	#PINN hyperparmas
+	layers = [3] + [n_neurons[j]] * width + [1]
+	lr = lr_list[j]
+	early_stopping_patience = epochs_list[j]
+	
 	# Create mesh only once
 	mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
 	mesh = meshio.read(mesh_file)
@@ -80,7 +88,7 @@ for j, mesh_size in enumerate(mesh_sizes):
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
 		model = pinn.PINN(layers, pproblem, domain, activation=activation).to(device)
-		model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6)
+		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
 		
 		print()
