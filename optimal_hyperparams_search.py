@@ -8,6 +8,23 @@ import meshio
 import os
 import time
 
+import argparse
+
+#***********************************************************
+width = 16
+n_trials=10
+epochs = 10000
+
+parser = argparse.ArgumentParser(description="PINN experiment.")
+parser.add_argument('--width', type=int, default=width, help='Neural network width')
+parser.add_argument('--n_trials', type=int, default=n_trials, help='Number of trials')
+parser.add_argument('--epochs', type=int, default=epochs, help='Number of epochs')
+
+args = parser.parse_args()
+width = args.width
+n_trials= args.n_trials
+epochs = args.epochs
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Reproducibility
@@ -30,11 +47,11 @@ n_ic = round(0.2 * mesh_data.number_of_segments)
 n_bc = n_ic
 n_col = mesh_data.number_of_segments - n_ic - n_bc
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-epochs = 200
+
 #*****************
 activation = 'tanh'
 depth = 4
-width = 16
+
 
 
 def objective(trial):
@@ -54,7 +71,7 @@ def objective(trial):
     try:
         start_time = time.time()
         model.train(batch_sizes, epochs, lr, lambda_weights,
-                    early_stopping_patience=10,
+                    early_stopping_patience=1000,
                     early_stopping_min_delta=1e-7,
                     restore_best_weights=True)
         rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
@@ -68,7 +85,7 @@ def objective(trial):
 start_ = time.time()
 study = optuna.create_study(direction="minimize", study_name="pinn-hpo")
 #study.optimize(objective, n_trials=100)  # You can increase this later
-study.optimize(objective, n_trials=20, n_jobs=os.cpu_count())
+study.optimize(objective, n_trials=n_trials, n_jobs=os.cpu_count())
 end_ = time.time()
 
 
@@ -77,7 +94,7 @@ print(f"\nMinization ended in {end_ - start_:0.2f}")
 # Save results
 import pandas as pd
 df_results = study.trials_dataframe()
-df_results.to_csv("optuna_pinn_results.csv", index=False)
+df_results.to_csv(f"optuna_pinn_results_{width}.csv", index=False)
 
 # Show best hyperparameters
 print("Best trial:")
