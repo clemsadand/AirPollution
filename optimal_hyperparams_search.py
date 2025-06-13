@@ -27,17 +27,20 @@ n_ic = round(0.2 * mesh_data.number_of_segments)
 n_bc = n_ic
 n_col = mesh_data.number_of_segments - n_ic - n_bc
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-
 epochs = 100
+#*****************
+activation = 'tanh'
+depth = 4
+
 
 def objective(trial):
     # Sample hyperparameters
-    depth = trial.suggest_int('depth', 3, 6)
+    #depth = trial.suggest_int('depth', 3, 6)
     width = trial.suggest_categorical('width', [16, 32, 64])
     lr = trial.suggest_float('lr', 1e-4, 5e-3, log=True)
     lambda_pde = trial.suggest_float('lambda_pde', 0.1, 10.0, log=True)
     lambda_ic_bc = trial.suggest_float('lambda_ic_bc', 0.1, 10.0, log=True)
-    activation = trial.suggest_categorical('activation', ['tanh', 'sine', 'swish'])
+    #activation = trial.suggest_categorical('activation', ['tanh', 'sine', 'swish'])
 
     # Build model
     layers = [3] + [width] * depth + [1]
@@ -47,12 +50,13 @@ def objective(trial):
     try:
         start_time = time.time()
         model.train(batch_sizes, epochs, lr, lambda_weights,
-                    early_stopping_patience=50,
-                    early_stopping_min_delta=1e-5)
+                    early_stopping_patience=10,
+                    early_stopping_min_delta=1e-5,
+                    restore_best_weights=True)
         rel_l2_error, l2_error, max_error = model.compute_errors(mesh_data, problem.analytical_solution)
         train_time = time.time() - start_time
         trial.set_user_attr("train_time", train_time)
-        return l2_error + max_error  # Objective to minimize
+        return l2_error + max_error - 1e-5  # Objective to minimize
     except Exception as e:
         print(f"Trial failed: {e}")
         return float("inf")  # Penalize failures
