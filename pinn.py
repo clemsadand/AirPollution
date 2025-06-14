@@ -49,6 +49,13 @@ class AdaptiveTanh(nn.Module):
         return torch.tanh(self.alpha * x)
 
 
+def backend(x):
+    if isinstance(x, np.ndarray):
+        return np
+    elif isinstance(x, torch.Tensor):
+        return torch
+    else:
+        raise TypeError("Unsupported type")
 #Class de base pour les problêmes d'advection-diffusion avec params constants
 
 class AdDifProblem(abc.ABC):
@@ -75,23 +82,30 @@ class Problem(AdDifProblem):
 
     def analytical_solution(self, xyt):
         """Compute analytical solution at space-time points."""
+        xp = backend(xyt)
         denom = 4 * self.D * xyt[:, 2] + self.sigma**2
         
         num = (xyt[:, 0] - self.v[0] * xyt[:, 2])**2 + (xyt[:, 1] - self.v[1] * xyt[:, 2])**2
-        return torch.exp(- num /denom) / (torch.pi * denom)
+        return xp.exp(- num /denom) / (xp.pi * denom)
 
     def initial_condition_fn(self, xy):
         """Evaluate initial condition."""
-        t = torch.zeros((xy.shape[0], 1), dtype=torch.float32, device=xy.device)
-        xyt = torch.cat([xy, t], dim=1)
+        xp = backend(xy)
+        if xp == np:
+            t = xp.zeros((xy.shape[0], 1), dtype=xp.float32)
+            xyt = xp.hstack([xy, t])
+        else:
+            t = xp.zeros((xy.shape[0], 1), dtype=xp.float32, device=xy.device)
+            xyt = xp.cat([xy, t], dim=1)
+        
         return self.analytical_solution(xyt)
 
-		
     def boundary_fn(self, xyt):
         return self.analytical_solution(xyt)
     
     def source_term(self, xyt):
-        return torch.zeros_like(xyt[:,0])
+        xp = backend(xyt)
+        return xp.zeros_like(xyt[:,0])
 
 class Domain:
     """Parameters defining the domain of the problem."""
@@ -605,8 +619,8 @@ if __name__ == "__main__":
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
     lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}#60, 40, 100); (150, 40, 80); (180, 60, 80)
     
-    lr = 1e-3
-    epochs = 4000
+    lr = 1e-4
+    epochs = 4#000
     
     pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=1000, early_stopping_min_delta=1e-6)
     

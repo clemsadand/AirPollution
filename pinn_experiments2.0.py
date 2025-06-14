@@ -170,7 +170,7 @@ for i in range(len(mesh_sizes)):
     
     if mesh_size >=32:
         pd.DataFrame(pinn_results).to_csv(f"{exp_dir}/df_pinn_training_results.csv")
-    # break
+    #break
     #if mesh_size==32:
     #	break
 

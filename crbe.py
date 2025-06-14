@@ -43,6 +43,14 @@ def create_mesh(n_points_per_axis=20, domain_size=2.0, filename="square_mesh.msh
     gmsh.finalize()
     return filename
 
+def backend(x):
+    if isinstance(x, np.ndarray):
+        return np
+    elif isinstance(x, torch.Tensor):
+        return torch
+    else:
+        raise TypeError("Unsupported type")
+
 class AdDifProblem(abc.ABC):
     def __init__(self, v, D):
         self.v = v
@@ -57,6 +65,8 @@ class AdDifProblem(abc.ABC):
     def source_term(self, xyt):
         pass
 
+
+
 class Problem(AdDifProblem):
     """Physical model definitions and analytical solution."""
     
@@ -67,40 +77,30 @@ class Problem(AdDifProblem):
 
     def analytical_solution(self, xyt):
         """Compute analytical solution at space-time points."""
-        # Handle t=0 case separately to avoid division by zero
-        t_zero_mask = np.isclose(xyt[:,2], 0.0, atol=1e-14)
-        result = np.zeros_like(xyt[:,0])
+        xp = backend(xyt)
+        denom = 4 * self.D * xyt[:, 2] + self.sigma**2
         
-        # For t=0 points
-        if np.any(t_zero_mask):
-            denom_zero = self.sigma**2
-            term_zero = np.exp(
-                - (xyt[t_zero_mask,0]**2 + xyt[t_zero_mask,1]**2) / denom_zero
-            )
-            result[t_zero_mask] = term_zero / (np.pi * denom_zero)
-        
-        # For t>0 points
-        if np.any(~t_zero_mask):
-            denom = 4 * self.D * xyt[~t_zero_mask,2] + self.sigma**2
-            term = np.exp(
-                - ((xyt[~t_zero_mask,0] - xyt[~t_zero_mask,2] * self.v[0])**2 + 
-                   (xyt[~t_zero_mask,1] - xyt[~t_zero_mask,2] * self.v[1])**2) / denom
-            )
-            result[~t_zero_mask] = term / (np.pi * denom)
-            
-        return result
+        num = (xyt[:, 0] - self.v[0] * xyt[:, 2])**2 + (xyt[:, 1] - self.v[1] * xyt[:, 2])**2
+        return xp.exp(- num /denom) / (xp.pi * denom)
 
     def initial_condition_fn(self, xy):
         """Evaluate initial condition."""
-        t = np.zeros((xy.shape[0], 1))
-        xyt = np.hstack([xy, t])
+        xp = backend(xy)
+        if xp == np:
+            t = xp.zeros((xy.shape[0], 1), dtype=xp.float32)
+            xyt = xp.hstack([xy, t])
+        else:
+            t = xp.zeros((xy.shape[0], 1), dtype=xp.float32, device=xy.device)
+            xyt = xp.cat([xy, t], dim=1)
+        
         return self.analytical_solution(xyt)
-		
+
     def boundary_fn(self, xyt):
         return self.analytical_solution(xyt)
     
     def source_term(self, xyt):
-        return np.zeros_like(xyt[:,0])
+        xp = backend(xyt)
+        return xp.zeros_like(xyt[:,0])
 
 class Domain:
     """Parameters defining the domain of the problem."""
@@ -729,7 +729,7 @@ if __name__ == '__main__':
     sigma = 0.1
 
     # Create mesh with 30 points per axis (higher resolution)
-    mesh_file = create_mesh(8, domain_size=domain_size)
+    mesh_file = create_mesh(32, domain_size=domain_size)
     mesh = meshio.read(mesh_file)
 
     # Setup parameters
