@@ -11,9 +11,9 @@ import time
 import argparse
 
 #***********************************************************
-width = 16
+width = 32
 n_trials=10
-epochs = 10000
+epochs = 100
 
 parser = argparse.ArgumentParser(description="PINN experiment.")
 parser.add_argument('--width', type=int, default=width, help='Neural network width')
@@ -33,7 +33,7 @@ torch.manual_seed(1234)
 
 # Set up your problem once (outside the loop)
 domain = pinn.Domain()
-problem = pinn.Problem()
+problem = pinn.Problem(sigma=1.0)
 domain_size = 20
 n_steps = 128
 mesh_size = 64
@@ -70,7 +70,6 @@ def objective(trial):
 
     try:
         start_time = time.time()
-        print(f"\nDevice: {next(model.parameters()).device}\n")
 
         model.train(batch_sizes, epochs, lr, lambda_weights,
                     early_stopping_patience=1000,

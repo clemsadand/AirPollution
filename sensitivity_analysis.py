@@ -70,7 +70,7 @@ def get_cpu_memory():
 D_list = [0.001, 0.01, 0.1, 1.0, 10]
 sensitivity_data = []
 
-early_stopping_patience = 200
+early_stopping_patience = 500
 
 filename = f"{exp_dir}/df_sensitivity_data.csv"
 
@@ -99,7 +99,7 @@ for j, mesh_size in [(idx_mesh_size, mesh_sizes[idx_mesh_size])]:#enumerate(mesh
 	for i, D in enumerate(D_list):
 		print(f"Running for D = {D}")
 		#PINN's setup
-		pproblem = pinn.Problem(D=D)
+		pproblem = pinn.Problem(D=D, sigma=1.0)
 		model = pinn.PINN(layers, pproblem, domain, activation=activation).to(device)
 		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
@@ -107,7 +107,7 @@ for j, mesh_size in [(idx_mesh_size, mesh_sizes[idx_mesh_size])]:#enumerate(mesh
 		print()
 		
 		#CR-BE setup
-		cproblem = crbe.Problem(D=D)
+		cproblem = crbe.Problem(D=D, sigma=1.0)
 		solver = crbe.BESCRFEM(domain, cproblem, mesh_data, crbe.ElementCR(), 1)
 		solver.solve()
 

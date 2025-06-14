@@ -75,7 +75,7 @@ class AdDifProblem(abc.ABC):
 class Problem(AdDifProblem):
     """Physical model definitions and analytical solution."""
     
-    def __init__(self, v=[1.0, 0.5], D=0.1, sigma=0.1):
+    def __init__(self, v=[1.0, 0.5], D=0.1, sigma=1.0):
         super().__init__(v, D)
         """Initialize model parameters."""
         self.sigma = sigma
@@ -605,7 +605,7 @@ if __name__ == "__main__":
     #  Initialize
     domain = Domain()
     
-    problem = Problem()
+    problem = Problem(sigma=1.0)
     
     #mmeshing
     import crbe
@@ -643,10 +643,14 @@ if __name__ == "__main__":
     layers = [3, 20, 20, 20, 20, 20, 1]  # [input_dim, hidden_layers, output_dim]
     
     # Training parameters
-    batch_sizes = {'pde': 5000, 'ic': 1000, 'bc': 1000}
-    lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
+    n_col = round(mesh_data.number_of_segments / 1.4)
+    n_ic = round(0.2 * n_col)
+    n_bc = round(0.2 * n_col)
+    batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
+    lambda_weights = {'pde': 2.0, 'ic': 10.0, 'bc': 10.0}
+    
     lr = 0.001
-    epochs = 10000
+    epochs = 1000
     model = PINN(layers, problem, domain).to(device)
     model.train(batch_sizes, epochs, lr, lambda_weights)
     #******************************************

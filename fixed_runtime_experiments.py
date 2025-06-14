@@ -33,9 +33,9 @@ def get_cpu_memory():
 
 # --- Problem Setup ---
 domain_pinn = pinn.Domain()
-problem_pinn = pinn.Problem()
+problem_pinn = pinn.Problem(sigma=1.0)
 domain_crbe = crbe.Domain()
-problem_crbe = crbe.Problem()
+problem_crbe = crbe.Problem(sigma=1.0)
 
 # --- Experimental Settings ---
 domain_size = 20
@@ -79,7 +79,7 @@ def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons, lr):
     
     while (time.time() - start_time) < time_budget:
         # Single epoch training
-        epoch_history = model.train(batch_sizes, epochs=1, lr=lr, lambda_weights=lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6)
+        epoch_history = model.train(batch_sizes, epochs=1, lr=lr, lambda_weights=lambda_weights)
         
         # Store history
         for key in history.keys():

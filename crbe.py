@@ -70,7 +70,7 @@ class AdDifProblem(abc.ABC):
 class Problem(AdDifProblem):
     """Physical model definitions and analytical solution."""
     
-    def __init__(self, v=[1.0, 0.5], D=0.1, sigma=0.1):
+    def __init__(self, v=[1.0, 0.5], D=0.1, sigma=1.0):
         super().__init__(v, D)
         """Initialize model parameters."""
         self.sigma = sigma
@@ -743,10 +743,11 @@ if __name__ == '__main__':
     T = 10.0  # End time
     D = 0.1  # Diffusion coefficient (small value leads to advection-dominated flow)
     v = (1.0, 0.5)  # Velocity field
-    sigma = 0.1
+    sigma = 1.0
 
     # Create mesh with 30 points per axis (higher resolution)
-    mesh_file = create_mesh(32, domain_size=domain_size)
+    ms = 128
+    mesh_file = create_mesh(ms, domain_size=domain_size)
     mesh = meshio.read(mesh_file)
 
     # Setup parameters
@@ -774,5 +775,5 @@ if __name__ == '__main__':
 
     print(f"Max Error: {max_error:0.4f}")
 
-    solver1.plot_interpolated_solution()
+    solver1.plot_interpolated_solution(problem.analytical_solution, name=f"crbe{ms}")
     solver1.plot_solution()

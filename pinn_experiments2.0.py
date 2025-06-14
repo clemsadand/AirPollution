@@ -61,7 +61,7 @@ def get_cpu_memory():
 
 # --- Problem Setup ---
 domain = pinn.Domain()
-problem = pinn.Problem()
+problem = pinn.Problem(sigma=1.0)
 
 # --- Experimental Settings ---
 domain_size = 20

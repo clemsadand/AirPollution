@@ -22,7 +22,7 @@ os.makedirs(exp_dir, exist_ok=True)
 domain_size = 20.0
 
 domain = crbe.Domain()
-problem = crbe.Problem()
+problem = crbe.Problem(sigma=1.0)
 
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_steps = 128
