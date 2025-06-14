@@ -42,6 +42,8 @@ if os.path.exists(base_dir):
     exp_dir = f"{base_dir}_{date_str}"
 else:
     exp_dir = base_dir
+os.makedirs(exp_dir, exist_ok=True)
+
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
