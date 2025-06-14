@@ -511,7 +511,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         """Compute errors between numerical and analytical solutions."""
         rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
          
-        midpoints = mesh_data.midpoints
+        midpoints = self.mesh_data.midpoints
         t_array = np.full((midpoints.shape[0], 1), self.domain.T)
         
         xyt = np.hstack([midpoints, t_array])

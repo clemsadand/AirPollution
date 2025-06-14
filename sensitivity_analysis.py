@@ -19,6 +19,7 @@ parser.add_argument('--width', type=int, default=4, help='Number of hidden layer
 #parser.add_argument('--depth', type=int, default=64, help='Number of neurons per layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
 parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
+parser.add_argument('--early_stopping_patience', type=int, default=0, help='Number of epochs to wait if no improvement')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 #parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
 #-------------------------------------
@@ -26,6 +27,7 @@ args = parser.parse_args()
 width = args.width
 #depth = args.depth
 activation = args.activation
+early_stopping_patience = args.early_stopping_patience
 epochs = args.epochs
 restore_best_weights = args.restore_best_weights
 #learning_rate = args.learning_rate
@@ -66,6 +68,8 @@ def get_cpu_memory():
 D_list = [0.001, 0.01, 0.1, 1.0, 10]
 sensitivity_data = []
 
+early_stopping_patience = 200
+
 filename = f"{exp_dir}/df_sensitivity_data.csv"
 
 mesh_sizes = [4, 8, 16, 32, 64, 128]
@@ -73,12 +77,13 @@ n_neurons = [2, 4, 8, 16, 32, 64]
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
 epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
 
-for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
+for j, mesh_size in [(idx_mesh_size, mesh_sizes[idx_mesh_size])]:#enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
 
 	#PINN hyperparmas
 	layers = [3] + [n_neurons[j]] * width + [1]
 	lr = lr_list[j]
+	#early_stopping_patience = epochs_list[j]
 	
 	# Create mesh only once
 	mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
@@ -94,7 +99,7 @@ for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
 		model = pinn.PINN(layers, pproblem, domain, activation=activation).to(device)
-		model.train(batch_sizes, epochs, lr, lambda_weights)
+		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
 		
 		print()
