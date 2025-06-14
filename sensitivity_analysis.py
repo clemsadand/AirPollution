@@ -52,7 +52,7 @@ domain = pinn.Domain()
 
 domain_size = 20
 n_steps = 128
-idx_mesh_size = 5
+idx_mesh_size = 4
 
 # PINN Hyperparamters
 
@@ -99,13 +99,14 @@ for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 		model = pinn.PINN(layers, pproblem, domain, activation=activation).to(device)
 		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
-		
+		_ = model.plot_interpolated_solution(10.0, mesh_data,save_dir=exp_dir, name=f"D_{D}")
 		print()
 		
 		#CR-BE setup
 		cproblem = crbe.Problem(D=D)
 		solver = crbe.BESCRFEM(domain, cproblem, mesh_data, crbe.ElementCR(), 1)
 		solver.solve()
+		solver.plot_interpolated_solution(save_dir=exp_dir, name=f"D_{D}")
 
 		crbe_rel_l2_error, crbe_l2_error, crbe_max_error = solver.compute_errors(cproblem.analytical_solution)
 		
