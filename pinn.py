@@ -648,16 +648,16 @@ if __name__ == "__main__":
     lr = 0.001
     epochs = 10000
     model = PINN(layers, problem, domain).to(device)
-    #model.train(batch_sizes, epochs, lr, lambda_weights)
+    model.train(batch_sizes, epochs, lr, lambda_weights)
     #******************************************
-    #model.plot_history()
+    model.plot_history()
     
     
     errors = model.compute_errors(mesh_data, problem.analytical_solution)
     print(f"Compute error\n\tRel L2 Error: {errors[0]:.4f}\n\tL2 Error: {errors[1]:.4f}\n\tMax Error: {errors[2]:.4f}")
     print()
     
-    #model.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
+    model.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
     
     #for name, param in model.named_parameters():
     #	if "alpha" in name:
