@@ -44,9 +44,8 @@ def create_mesh(n_points_per_axis=20, domain_size=2.0, filename="square_mesh.msh
     return filename
 
 class AdDifProblem(abc.ABC):
-    def __init__(self, vx, vy, D):
-        self.vx = vx
-        self.vy = vy
+    def __init__(self, v, D):
+        self.v = v
         self.D = D
         
     def initial_condition_fn(self, xyt):
@@ -61,8 +60,8 @@ class AdDifProblem(abc.ABC):
 class Problem(AdDifProblem):
     """Physical model definitions and analytical solution."""
     
-    def __init__(self, vx=1.0, vy=0.5, D=0.1, sigma=0.1):
-        super().__init__(vx, vy, D)
+    def __init__(self, v=[1.0, 0.5], D=0.1, sigma=0.1):
+        super().__init__(v, D)
         """Initialize model parameters."""
         self.sigma = sigma
 
@@ -84,8 +83,8 @@ class Problem(AdDifProblem):
         if np.any(~t_zero_mask):
             denom = 4 * self.D * xyt[~t_zero_mask,2] + self.sigma**2
             term = np.exp(
-                - ((xyt[~t_zero_mask,0] - xyt[~t_zero_mask,2] * self.vx)**2 + 
-                   (xyt[~t_zero_mask,1] - xyt[~t_zero_mask,2] * self.vy)**2) / denom
+                - ((xyt[~t_zero_mask,0] - xyt[~t_zero_mask,2] * self.v[0])**2 + 
+                   (xyt[~t_zero_mask,1] - xyt[~t_zero_mask,2] * self.v[1])**2) / denom
             )
             result[~t_zero_mask] = term / (np.pi * denom)
             
@@ -382,7 +381,7 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
 
         #2/ terme ∫ φ_i (v·∇φ_j) dx = (area/3) * (v·∇φ_j)
         area     = self.mesh_data.triangle_areas[tri_idx]
-        v_vec    = np.array([self.problem.vx, self.problem.vy])
+        v_vec    = np.array([self.problem.v[0], self.problem.v[1]])
         phi_int  = np.ones(3) * (area / 6.0)             # φ intégrée
         v_dot_gr = grad_phi @ v_vec                      # (3,)
         A_loc    = np.outer(phi_int, v_dot_gr)           # (3×3)
@@ -726,7 +725,7 @@ if __name__ == '__main__':
     Lx = Ly = domain_size  # Half-size of the domain
     T = 10.0  # End time
     D = 0.1  # Diffusion coefficient (small value leads to advection-dominated flow)
-    vx, vy = 1.0, 0.5  # Velocity field
+    v = (1.0, 0.5)  # Velocity field
     sigma = 0.1
 
     # Create mesh with 30 points per axis (higher resolution)
@@ -735,7 +734,7 @@ if __name__ == '__main__':
 
     # Setup parameters
     domain = Domain(Lx=Lx, Ly=Ly, T=T)
-    problem = Problem(vx=vx, vy=vy, D=D, sigma=sigma)
+    problem = Problem(v=v, D=D, sigma=sigma)
     n_steps = 128
     mesh_data = MeshData(mesh, domain, nt=n_steps)  # More time steps for accuracy
 
