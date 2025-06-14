@@ -52,7 +52,7 @@ domain = pinn.Domain()
 
 domain_size = 20
 n_steps = 128
-idx_mesh_size = 4
+idx_mesh_size = 6
 
 # PINN Hyperparamters
 
@@ -65,15 +65,15 @@ def get_cpu_memory():
     return psutil.Process().memory_info().rss / 1e6  # in MB
 
 # sensitivity setup 
-D_list = [0.001, 0.01, 0.1, 1.0, 10]
+D_list = [0.001, 0.01, 0.1, 1.0]
 sensitivity_data = []
 
 filename = f"{exp_dir}/df_sensitivity_data.csv"
 
-mesh_sizes = [4, 8, 16, 32, 64, 128]
-n_neurons = [2, 4, 8, 16, 32, 64]
-lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
-epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
+mesh_sizes = [4, 8, 16, 32, 64, 128, 256]
+n_neurons = [2, 4, 8, 16, 32, 64, 128]
+lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4, 1e-3]
+epochs_list = [1000, 2000, 4000, 8000, 16000, 32000, 64000]
 
 for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
