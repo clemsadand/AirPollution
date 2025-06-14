@@ -9,6 +9,7 @@ import torch
 import psutil
 import pandas as pd
 import os
+import gc
 from datetime import datetime
 import argparse
 
