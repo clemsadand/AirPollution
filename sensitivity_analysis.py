@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description="PINN experiment with configurable 
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 #parser.add_argument('--depth', type=int, default=64, help='Number of neurons per layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
+parser.add_argument('--epochs', type=int, default=10000, help='Number of epochs')
 parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 #parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
@@ -81,7 +81,7 @@ for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 	#PINN hyperparmas
 	layers = [3] + [n_neurons[j]] * width + [1]
 	lr = lr_list[j]
-	early_stopping_patience = epochs_list[j]
+	early_stopping_patience = 500#epochs_list[j]
 	
 	# Create mesh only once
 	mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
