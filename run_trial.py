@@ -23,26 +23,23 @@ mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
 mesh = meshio.read(mesh_file)
 mesh_data = crbe.MeshData(mesh, domain, nt=n_steps)
 
-n_ic = round(0.2 * mesh_data.number_of_segments)
-n_bc = n_ic
-n_col = mesh_data.number_of_segments - n_ic - n_bc
+n_col = round(mesh_data.number_of_segments / 1.4)
+n_ic = round(0.2 * n_col)
+n_bc = round(0.2 * n_col)
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
 
-layers = [3] + [16] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
+layers = [3] + [16] * 5 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
 model = pinn.PINN(layers, problem, domain).to(device)
 
-# Compute residual
-n_ic = round(0.2 * mesh_data.number_of_segments)
-n_bc = n_ic
-n_col = mesh_data.number_of_segments - n_ic - n_bc
-batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
-lambda_weights = {'pde': 1.4990615182382665, 'ic': 0.49929070971734624, 'bc': 0.49929070971734624}
+params = {'lr': 0.0008361816272135304, 'lambda_pde': 0.48669353902173246, 'lambda_ic_bc': 0.2029249101415861}
+lambda_weights = {'pde': params["lambda_pde"], 'ic': params["lambda_ic_bc"], 'bc': params["lambda_ic_bc"]}
     
-lr = 0.008257554820761981
+lr = params["lr"]
 epochs = 4000
-    
-model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=100, early_stopping_min_delta=1e-6, restore_best_weights=False)
+early_stopping_patience = 10000
+
+model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=True)
 
 model.plot_history()
     

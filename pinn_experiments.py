@@ -90,9 +90,9 @@ for i in range(len(mesh_sizes)):
     n_boundary_dofs.append(len(mesh_data.boundary_segments))
 
     #define batch size
-    n_ic = round(0.2 * mesh_data.number_of_segments)
-    n_bc = n_ic
-    n_col = mesh_data.number_of_segments - n_ic - n_bc
+    n_col = round(mesh_data.number_of_segments / 1.4)
+    n_ic = round(0.2 * n_col)
+    n_bc = round(0.2 * n_col)
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
     model = pinn.PINN(layers, problem, domain, activation=activation)

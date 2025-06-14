@@ -214,18 +214,19 @@ class PINN(nn.Module):
         
         return grad_t + v_dot_grad - self.problem.D * laplacian_xy - source
     
-    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500, early_stopping_min_delta=1e-6, mini_batch_size=None, restore_best_weights=True):
+    def train(self, batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=0, early_stopping_min_delta=1e-6, mini_batch_size=None, restore_best_weights=True):
         """Train the PINNusing Latin Hypercube sampling for collocation points"""
         optimizer = optim.Adam(self.parameters(), lr=lr)
         
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=500, factor=0.5, verbose=True)
         
         #initialier early stopping
-        early_stopping = EarlyStopping(
-            patience=early_stopping_patience, 
-            min_delta=early_stopping_min_delta,
-            restore_best_weights=restore_best_weights
-        )
+        if early_stopping_patience:
+            early_stopping = EarlyStopping(
+                patience=early_stopping_patience, 
+                min_delta=early_stopping_min_delta,
+                restore_best_weights=restore_best_weights
+            )
         
         # Create history to track losses
         self.history = {'total_loss': [], 'pde_loss': [], 'ic_loss': [], 'bc_loss': []}
@@ -297,12 +298,12 @@ class PINN(nn.Module):
             self.history['bc_loss'].append(bc_loss.item())
             
             #check early stopping
-            if early_stopping(total_loss.item(), self.model):
+            if early_stopping_patience and early_stopping(total_loss.item(), self.model):
                 print(f"\nEarly stopping triggered at epoch {epoch+1}")
                 print(f"Best loss: {early_stopping.best_loss:.6f}")
                 break
         #restore best weights if early stopping was used
-        if early_stopping.restore_best_weights:
+        if early_stopping_patience and early_stopping.restore_best_weights:
             early_stopping.restore_weights(self.model)
             print("Restored best model weights")
             
@@ -322,8 +323,20 @@ class PINN(nn.Module):
             
             midpoints = torch.tensor(mesh_data.midpoints, dtype=torch.float32, device=device)
             t_tensor = torch.full((midpoints.shape[0], 1), self.domain.T, dtype=torch.float32, device=device)
-            midpoints_t = torch.cat([midpoints, t_tensor], dim=1)
+            xyt = torch.cat([midpoints, t_tensor], dim=1)
             
+            with torch.no_grad():
+               	u_exact_midpoints = analytical_sol_fn(xyt).squeeze()
+                u_num_midpoints = self.forward(xyt).squeeze()
+            
+            norm_u_exact = torch.sqrt(torch.sum(u_exact_midpoints**2))
+            
+            error = torch.abs(u_num_midpoints - u_exact_midpoints)
+            max_error = torch.max(error)
+            l2_error = torch.sqrt(torch.sum(error**2))
+            rel_l2_error = l2_error / norm_u_exact
+            
+            """
             for tri_idx in range(mesh_data.number_of_triangles):
                 segs = mesh_data.triangle_to_segments[tri_idx]
                 
@@ -345,12 +358,13 @@ class PINN(nn.Module):
                 max_error = torch.maximum(max_error, local_max_error)
                 
                 #max_error = torch.maximum(max_error, local_error)
-                
-            _norm_u_exact /= 3
-            l2_error /= 3
+            """
+            
+            #_norm_u_exact = torch.sqrt(_norm_u_exact / 3)
+            #l2_error = torch.sqrt(l2_error / 3)
             #max_error /= 3
 
-            rel_l2_error = l2_error / (_norm_u_exact + 1e-12)  # avoid division by zero
+            #rel_l2_error = l2_error / (_norm_u_exact + 1e-12)  # avoid division by zero
 
             return rel_l2_error.item(), l2_error.item(), max_error.item()
 
@@ -604,37 +618,48 @@ if __name__ == "__main__":
     mesh_data = crbe.MeshData(mesh, domain, nt=128)
     
     # PINN's setup
-    layers = [3] + [32] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
-    pinn = PINN(layers, problem, domain).to(device)
+    #layers = [3] + [32] * 4 + [1]  # Input: (x, y, t) → Output: c(x, y, t)
+    
+    """pinn = PINN(layers, problem, domain).to(device)
 
     #xyt = torch.tensor([[1.0, 0.1, 0.0]], device=device, requires_grad=True)  # Shape: (1, 3)
 
     # Compute residual
     #residual = pinn.compute_pde_residual(xyt)
     #print("PDE residual at (1.0, 0.1, 0.0):", residual)
-    
-    n_ic = round(0.2 * mesh_data.number_of_segments)
-    n_bc = n_ic
-    n_col = mesh_data.number_of_segments - n_ic - n_bc
+    n_col = round(mesh_data.number_of_segments / 1.4)
+    n_ic = round(0.2 * n_col)
+    n_bc = round(0.2 * n_col)
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
     lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}#60, 40, 100); (150, 40, 80); (180, 60, 80)
     
     lr = 1e-4
     epochs = 4#000
     
-    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=1000, early_stopping_min_delta=1e-6)
+    pinn.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=1000, early_stopping_min_delta=1e-6)"""
     
     #xy = torch.tensor([[1.5, 3], [5, 4]], device=device, requires_grad=True)
+    #*****************************************
+    layers = [3, 20, 20, 20, 20, 20, 1]  # [input_dim, hidden_layers, output_dim]
     
-    pinn.plot_history()
+    # Training parameters
+    batch_sizes = {'pde': 5000, 'ic': 1000, 'bc': 1000}
+    lambda_weights = {'pde': 1.0, 'ic': 10.0, 'bc': 10.0}
+    lr = 0.001
+    epochs = 10000
+    model = PINN(layers, problem, domain).to(device)
+    #model.train(batch_sizes, epochs, lr, lambda_weights)
+    #******************************************
+    #model.plot_history()
     
-    errors = pinn.compute_errors(mesh_data, problem.analytical_solution)
+    
+    errors = model.compute_errors(mesh_data, problem.analytical_solution)
     print(f"Compute error\n\tRel L2 Error: {errors[0]:.4f}\n\tL2 Error: {errors[1]:.4f}\n\tMax Error: {errors[2]:.4f}")
     print()
     
-    pinn.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
+    #model.plot_interpolated_solution(10.0, mesh_data, problem.analytical_solution)
     
-    #for name, param in pinn.named_parameters():
+    #for name, param in model.named_parameters():
     #	if "alpha" in name:
     #		print(name, param.data)
 

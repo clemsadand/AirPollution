@@ -57,9 +57,9 @@ def run_pinn_with_time_budget(mesh_data, time_budget, n_neurons, lr):
     layers = [3] + [n_neurons] * 4 + [1]
     
     # Define batch sizes
-    n_ic = round(0.2 * mesh_data.number_of_segments)
-    n_bc = n_ic
-    n_col = mesh_data.number_of_segments - n_ic - n_bc
+    n_col = round(mesh_data.number_of_segments / 1.4)
+    n_ic = round(0.2 * n_col)
+    n_bc = round(0.2 * n_col)
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
     
     model = pinn.PINN(layers, problem_pinn, domain_pinn).to(device)

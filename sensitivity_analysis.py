@@ -18,8 +18,7 @@ parser = argparse.ArgumentParser(description="PINN experiment with configurable 
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 #parser.add_argument('--depth', type=int, default=64, help='Number of neurons per layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--epochs', type=int, default=10000, help='Number of epochs')
-parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
+parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 #parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
 #-------------------------------------
@@ -27,7 +26,6 @@ args = parser.parse_args()
 width = args.width
 #depth = args.depth
 activation = args.activation
-early_stopping_patience = args.early_stopping_patience
 epochs = args.epochs
 restore_best_weights = args.restore_best_weights
 #learning_rate = args.learning_rate
@@ -52,7 +50,7 @@ domain = pinn.Domain()
 
 domain_size = 20
 n_steps = 128
-idx_mesh_size = 6
+idx_mesh_size = 4
 
 # PINN Hyperparamters
 
@@ -65,15 +63,15 @@ def get_cpu_memory():
     return psutil.Process().memory_info().rss / 1e6  # in MB
 
 # sensitivity setup 
-D_list = [0.001, 0.01, 0.1, 1.0]
+D_list = [0.001, 0.01, 0.1, 1.0, 10]
 sensitivity_data = []
 
 filename = f"{exp_dir}/df_sensitivity_data.csv"
 
-mesh_sizes = [4, 8, 16, 32, 64, 128, 256]
-n_neurons = [2, 4, 8, 16, 32, 64, 128]
-lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4, 1e-3]
-epochs_list = [1000, 2000, 4000, 8000, 16000, 32000, 64000]
+mesh_sizes = [4, 8, 16, 32, 64, 128]
+n_neurons = [2, 4, 8, 16, 32, 64]
+lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
+epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
 
 for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
@@ -81,15 +79,14 @@ for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 	#PINN hyperparmas
 	layers = [3] + [n_neurons[j]] * width + [1]
 	lr = lr_list[j]
-	early_stopping_patience = 500#epochs_list[j]
 	
 	# Create mesh only once
 	mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
 	mesh = meshio.read(mesh_file)
 	mesh_data = crbe.MeshData(mesh, domain, nt=n_steps)
-	n_ic = round(0.2 * mesh_data.number_of_segments)
-	n_bc = n_ic
-	n_col = mesh_data.number_of_segments - n_ic - n_bc
+	n_col = round(mesh_data.number_of_segments / 1.4)
+	n_ic = round(0.2 * n_col)
+	n_bc = round(0.2 * n_col)
 	batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 	
 	for i, D in enumerate(D_list):
@@ -97,16 +94,15 @@ for j, mesh_size in [(5, mesh_sizes[5])]:#enumerate(mesh_sizes):
 		#PINN's setup
 		pproblem = pinn.Problem(D=D)
 		model = pinn.PINN(layers, pproblem, domain, activation=activation).to(device)
-		model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
+		model.train(batch_sizes, epochs, lr, lambda_weights)
 		pinn_rel_l2_error, pinn_l2_error, pinn_max_error = model.compute_errors(mesh_data, pproblem.analytical_solution)
-		_ = model.plot_interpolated_solution(10.0, mesh_data,save_dir=exp_dir, name=f"D_{D}")
+		
 		print()
 		
 		#CR-BE setup
 		cproblem = crbe.Problem(D=D)
 		solver = crbe.BESCRFEM(domain, cproblem, mesh_data, crbe.ElementCR(), 1)
 		solver.solve()
-		solver.plot_interpolated_solution(save_dir=exp_dir, name=f"D_{D}")
 
 		crbe_rel_l2_error, crbe_l2_error, crbe_max_error = solver.compute_errors(cproblem.analytical_solution)
 		

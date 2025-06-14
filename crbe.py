@@ -511,7 +511,23 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
         """Compute errors between numerical and analytical solutions."""
         rel_l2_error = max_error = l2_error = _norm_u_exact = 0.0
          
-        t_array = np.full((3, 1), self.domain.T)
+        midpoints = mesh_data.midpoints
+        t_array = np.full((midpoints.shape[0], 1), self.domain.T)
+        
+        xyt = np.hstack([midpoints, t_array])
+        
+        u_exact_midpoints = analytical_sol_fn(xyt)
+        u_num_midpoints = self.solutions[-1, :]
+        
+        error = np.abs(u_exact_midpoints - u_num_midpoints)
+        
+        max_error = np.max(error)
+        l2_error = np.sqrt(np.sum(error**2))
+        norm_u_exat = np.sqrt(np.sum(u_exact_midpoints**2))
+        
+        rel_l2_error = l2_error / norm_u_exat
+        
+        """
         for tri_idx in range(self.mesh_data.number_of_triangles):
             segs = self.mesh_data.triangle_to_segments[tri_idx]
             
@@ -531,11 +547,12 @@ class BESCRFEM:  # Backward Euler Scheme and Crouzeix-Raviart Finite Element Met
             max_error = max(max_error, local_max_error)
             #max_error = max(max_error, local_error)
          
-        _norm_u_exact /= 3
-        l2_error /= 3
+        _norm_u_exact = np.sqrt(_norm_u_exact / 3)
+        l2_error = np.sqrt(l2_error / 3)
         #max_error /= 3
         
-        rel_l2_error = l2_error / _norm_u_exact
+        rel_l2_error = l2_error / (_norm_u_exact + 1e-12) 
+        """
         
         return rel_l2_error, l2_error, max_error
         

@@ -21,9 +21,9 @@ mesh_file = crbe.create_mesh(mesh_size, domain_size=domain_size)
 mesh = meshio.read(mesh_file)
 mesh_data = crbe.MeshData(mesh, domain, nt=n_steps)
 
-n_ic = round(0.2 * mesh_data.number_of_segments)
-n_bc = n_ic
-n_col = mesh_data.number_of_segments - n_ic - n_bc
+n_col = round(mesh_data.number_of_segments / 1.4)
+n_ic = round(0.2 * n_col)
+n_bc = round(0.2 * n_col)
 batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
 epochs = 500  # Fewer epochs for faster search

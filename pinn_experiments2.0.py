@@ -23,13 +23,11 @@ parser.add_argument('--width', type=int, default=4, help='Number of hidden layer
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
-parser.add_argument('--early_stopping_patience', type=int, default=20000, help='Number of epochs to wait if no improvement')
 
 #---------------------------------------
 args = parser.parse_args()
 width = args.width
 activation = args.activation
-early_stopping_patience = args.early_stopping_patience
 restore_best_weights = args.restore_best_weights
 epochs = args.epochs
 
@@ -97,7 +95,7 @@ for i in range(len(mesh_sizes)):
     #layers = [3] + layers_list[i] + [1]
     layers = [3] + [n_neurons[i]] * width + [1]
     #epochs = epochs_list[i]
-    # early_stopping_patience = epochs_list[i]
+    early_stopping_patience = epochs_list[i]
     learning_rate = lr_list[i]
     
     #generate mesh
@@ -111,9 +109,9 @@ for i in range(len(mesh_sizes)):
     n_boundary_dofs.append(len(mesh_data.boundary_segments))
 
     #define batch size
-    n_ic = round(0.2 * mesh_data.number_of_segments)
-    n_bc = n_ic
-    n_col = mesh_data.number_of_segments - n_ic - n_bc
+    n_col = round(mesh_data.number_of_segments / 1.4)
+    n_ic = round(0.2 * n_col)
+    n_bc = round(0.2 * n_col)
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
     #Define model
@@ -131,7 +129,7 @@ for i in range(len(mesh_sizes)):
     initial_cpu_memory = get_cpu_memory()
     initial_gpu_memory = get_gpu_memory()
 
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights)
     
     train_time = time.time() - start_time
 
