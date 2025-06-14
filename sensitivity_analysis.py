@@ -73,7 +73,7 @@ filename = f"{exp_dir}/df_sensitivity_data.csv"
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
-epochs_list = [500, 1000, 2000, 4000, 4000, 4000]
+epochs_list = [500, 1000, 2000, 2000, 4000, 4000]
 
 for j, mesh_size in enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")
