@@ -94,7 +94,7 @@ for i in range(len(mesh_sizes)):
     # Hyperparameters' setup
     #layers = [3] + layers_list[i] + [1]
     layers = [3] + [n_neurons[i]] * width + [1]
-    #epochs = epochs_list[i]
+    epochs = epochs_list[i]
     early_stopping_patience = epochs_list[i]
     learning_rate = lr_list[i]
     
