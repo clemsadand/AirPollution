@@ -21,9 +21,9 @@ torch.manual_seed(1234)
 parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
+parser.add_argument('--early_stopping_patience', type=int, default=20000, help='Number of epochs to wait if no improvement')
 
 #---------------------------------------
 args = parser.parse_args()
@@ -97,7 +97,7 @@ for i in range(len(mesh_sizes)):
     #layers = [3] + layers_list[i] + [1]
     layers = [3] + [n_neurons[i]] * width + [1]
     #epochs = epochs_list[i]
-    early_stopping_patience = epochs_list[i]
+    # early_stopping_patience = epochs_list[i]
     learning_rate = lr_list[i]
     
     #generate mesh
