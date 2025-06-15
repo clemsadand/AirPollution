@@ -650,9 +650,9 @@ if __name__ == "__main__":
     lambda_weights = {'pde': 2.0, 'ic': 10.0, 'bc': 10.0}
     
     lr = 0.001
-    epochs = 6000
+    epochs = 10000
     model = PINN(layers, problem, domain).to(device)
-    model.train(batch_sizes, epochs, lr, lambda_weights)
+    model.train(batch_sizes, epochs, lr, lambda_weights, early_stopping_patience=500)
     #******************************************
     model.plot_history()
     

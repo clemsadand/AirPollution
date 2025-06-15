@@ -23,14 +23,14 @@ parser.add_argument('--width', type=int, default=4, help='Number of hidden layer
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
-
+#parser.add_argument('--early_stopping_patience', type=int, default=1000, help='Number of epochs')
 #---------------------------------------
 args = parser.parse_args()
 width = args.width
 activation = args.activation
 restore_best_weights = args.restore_best_weights
 epochs = args.epochs
-
+#early_stopping_patience = args.early_stopping_patience
 #---------------------------------------
 base_dir = f"pinn_experimental_results_w{width}"
 
@@ -71,7 +71,8 @@ n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
 
-epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
+epochs_list = [500, 1000, 2000, 4000, 8000, 16000]
+early_stopping_patience_list = [500, 500, 500, 1000, 1000, 1000]
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
 # layers_list = [
 #     [6],
@@ -95,7 +96,7 @@ for i in range(len(mesh_sizes)):
     #layers = [3] + layers_list[i] + [1]
     layers = [3] + [n_neurons[i]] * width + [1]
     epochs = epochs_list[i]
-    early_stopping_patience = epochs_list[i]
+    early_stopping_patience = early_stopping_patience_list[i]
     learning_rate = lr_list[i]
     
     #generate mesh
@@ -129,7 +130,7 @@ for i in range(len(mesh_sizes)):
     initial_cpu_memory = get_cpu_memory()
     initial_gpu_memory = get_gpu_memory()
 
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience)
     
     train_time = time.time() - start_time
 
