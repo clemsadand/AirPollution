@@ -499,8 +499,8 @@ class PINN(nn.Module):
             fig.colorbar(cntr1, ax=ax)
         
         plt.tight_layout()
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{name}.pdf", dpi=500)
-        plt.savefig(f"{save_dir}/pinn_interpolated_solution_{name}.png", dpi=500)
+        plt.savefig(f"{save_dir}/solution_{t}_interpolated_solution_{name}.pdf", dpi=500)
+        plt.savefig(f"{save_dir}/solution_{t}_interpolated_solution_{name}.png", dpi=500)
         plt.close()
         
         print(f"Saved at {save_dir}/pinn_interpolated_solution_{name}.pdf-png")
