@@ -1,16 +1,16 @@
-# Air Pollution Modelling with PINN and CR-FEM
+# Air Pollution Modelling with PINN and CRBE
 
 ## Description
 
 This project study the modeling of air pollution using the advection-diffusion equations in a bounded two-dimensional domain. It implements and compares two numerical methods for solving time-dependent advection-diffusion equations:
 1.  **Physics-Informed Neural Networks (PINN)**: A deep learning approach where a neural network is trained to satisfy the PDE, initial conditions, and boundary conditions.
-2.  **Crouzeix-Raviart Finite Element Method (CR-FEM)**: A classical finite element approach using Crouzeix-Raviart elements and a Backward Euler time-stepping scheme.
+2.  **Crouzeix-Raviart Finite Element Method (CRBE)**: A classical finite element approach using Crouzeix-Raviart elements and a Backward Euler time-stepping scheme.
 
 The project includes scripts for running experiments to compare the accuracy and performance of these methods.
 
 ## Features
 
--   Implementation of CR-FEM for 2D advection-diffusion problems.
+-   Implementation of CRBE for 2D advection-diffusion problems.
 -   Implementation of PINNs for 2D advection-diffusion problems.
 -   Mesh generation for FEM using the Gmsh Python API.
 -   Latin Hypercube Sampling for generating collocation points in PINNs.
@@ -31,16 +31,16 @@ PINNs leverage deep neural networks to approximate the solution of PDEs. The net
 The `pinn.py` script defines the PINN architecture, training loop, and evaluation methods.
 
 Key components:
--   `Problem`: Defines the analytical solution, initial, and boundary conditions (similar to CR-FEM but using PyTorch tensors).
+-   `Problem`: Defines the analytical solution, initial, and boundary conditions (similar to CRBE but using PyTorch tensors).
 -   `Domain`: Specifies the physical domain parameters.
 -   `PINN`: Defines the neural network architecture, methods for computing the PDE residual, and the training loop.
 -   `EarlyStopping`: Utility to prevent overfitting.
 -   Helper functions for sampling collocation points (LHS) and computing gradients.
 
 
-### Crouzeix-Raviart Finite Element Method (CR-FEM)
+### Crouzeix-Raviart fem and Bacwkard Euler scheme (CRBE)
 
-The CR-FEM approach discretizes the spatial domain using a triangular mesh. The concentration variable is approximated by piecewise linear functions that are continuous at the midpoints of element edges (Crouzeix-Raviart elements). A Backward Euler scheme is used for time discretization. The `crbe.py` script handles mesh creation, matrix assembly, solution, and error computation.
+The CRBE approach discretizes the spatial domain using a triangular mesh. The concentration variable is approximated by piecewise linear functions that are continuous at the midpoints of element edges (Crouzeix-Raviart elements). A Backward Euler scheme is used for time discretization. The `crbe.py` script handles mesh creation, matrix assembly, solution, and error computation.
 
 Key components:
 -   `create_mesh()`: Generates a square mesh using `gmsh`.
@@ -48,14 +48,14 @@ Key components:
 -   `Domain`: Specifies the physical domain parameters.
 -   `MeshData`: Stores and processes mesh information.
 -   `ElementCR`: Defines properties of the Crouzeix-Raviart reference element.
--   `BESCRFEM`: Implements the Backward Euler Scheme with CR-FEM, including matrix assembly, solving the linear system, and computing errors.
+-   `BESCRFEM`: Implements the Backward Euler Scheme with CRBE, including matrix assembly, solving the linear system, and computing errors.
 
 ## File Structure
 
 -   `pinn.py`: Contains the implementation of the Physics-Informed Neural Network solver.
 -   `crbe.py`: Contains the implementation of the Crouzeix-Raviart Finite Element Method solver.
 -   `pinn_experiments.py`: Script to run and log experiments for the PINN solver, varying mesh sizes for evaluation and network neuron counts.
--   `crbe_experiments.py`: Script to run and log experiments for the CR-FEM solver with varying mesh sizes.
+-   `crbe_experiments.py`: Script to run and log experiments for the CRBE solver with varying mesh sizes.
 -   `requirements.txt`: Lists the Python dependencies for the project.
 -   `Readme.md`: This file.
 -   `experimental_results/`: (Generated directory) Stores CSV files with results from experiment scripts.
@@ -87,7 +87,7 @@ Key components:
 
 Both `crbe.py` and `pinn.py` can be run directly to solve a default problem and generate solution plots:
 
--   **CR-FEM Solver:**
+-   **CRBE Solver:**
     ```bash
     python crbe.py
     ```
@@ -104,14 +104,14 @@ Both `crbe.py` and `pinn.py` can be run directly to solve a default problem and 
 The experiment scripts automate running the solvers with different configurations and log the results:
 -   **PINN Experiments:**
     ```bash
-    python pinn_experiments.py
+    python -m experiments.pinn_experiments.py
     ```
     This script will train and evaluate PINNs with different network architectures (number of neurons) and evaluation mesh sizes. Results will be saved to `experimental_results/df_pinn_training_results.csv`.
--   **CR-FEM Experiments:**
+-   **CRBE Experiments:**
     ```bash
-    python crbe_experiments.py
+    python -m experiments.crbe_experiments.py
     ```
-    This script will run the CR-FEM solver for various mesh sizes, and the results (errors, timings, memory usage) will be saved to `experimental_results/df_crbe_training_results.csv`.
+    This script will run the CRBE solver for various mesh sizes, and the results (errors, timings, memory usage) will be saved to `experimental_results/df_crbe_training_results.csv`.
 
 
 
