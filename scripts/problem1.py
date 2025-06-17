@@ -1,8 +1,8 @@
 import torch
 import numpy as np
-import crbe
-from crbe import AdDifProblem
-import pinn
+from src import crbe # Changed import
+from src.common import AdDifProblem # Changed import
+from src import pinn # Changed import
 import meshio
 from tqdm import tqdm
 import time
