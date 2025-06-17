@@ -36,9 +36,9 @@ def main():
     
     mesh_sizes = [4, 8, 16, 32, 64, 128]
     n_neurons = [2, 4, 8, 16, 32, 64]
-    epochs_list = [400, 800, 1600, 3200, 6400, 12000]# if not epochs else [epochs]*len(mesh_sizes)
+    epochs_list = [500, 1000, 2000, 4000, 8000, 16000]# if not epochs else [epochs]*len(mesh_sizes)
     #early_stopping_patience_list = [500, 500, 1000, 1000, 1000]
-    lr_list = [1e-3, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4]
+    lr_list = [1e-3, 1e-3, 1e-3, 1e-4, 2e-4, 3e-4]
     lambda_weights = {'pde': 1.0, 'ic': 8.0, 'bc': 1.0}
     lr = 1e-3
     epochs = 10 # Using 3000 epochs as per plan
@@ -159,8 +159,8 @@ def main():
         
         results_data.append(current_run_data)
         
-        if m_size == 64:
-        	break
+        #if m_size == 64:
+        #	break
 
     # --- Save Results ---
     df_results = pd.DataFrame(results_data)
