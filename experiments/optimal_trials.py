@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import time
-import pinn
-import crbe
+from src import pinn # Changed import
+from src import crbe # Changed import
 import meshio
 
 # Reproducibility

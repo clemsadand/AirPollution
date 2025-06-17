@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import crbe
+from src import crbe # Changed import
 import meshio
 from tqdm import tqdm
 import time

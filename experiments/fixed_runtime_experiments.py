@@ -1,7 +1,7 @@
 # --- Fixed Runtime Comparison Experiment ---
 import numpy as np
-import crbe
-import pinn
+from src import crbe # Changed import
+from src import pinn # Changed import
 import meshio
 from tqdm import tqdm
 import time

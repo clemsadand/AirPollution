@@ -1,7 +1,7 @@
 # --- Imports ---
 import numpy as np
-import crbe
-import pinn
+from src import crbe # Changed import
+from src import pinn # Changed import
 import meshio
 from tqdm import tqdm
 import time
@@ -9,8 +9,6 @@ import torch
 import psutil
 import pandas as pd
 import os
-import gc
-from datetime import datetime
 import argparse
 
 # Reproducibility
@@ -21,34 +19,26 @@ torch.manual_seed(1234)
 parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
-#parser.add_argument('--early_stopping_patience', type=int, default=1000, help='Number of epochs')
+parser.add_argument('--early_stopping_patience', type=int, default=50000, help='Number of epochs to wait if no improvement')
+parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
+parser.add_argument('--restore_best_weights', type=bool, default=False, help='Wether to restore best model or not')
+
 #---------------------------------------
 args = parser.parse_args()
 width = args.width
 activation = args.activation
-restore_best_weights = args.restore_best_weights
+early_stopping_patience = args.early_stopping_patience
 epochs = args.epochs
-#early_stopping_patience = args.early_stopping_patience
+learning_rate = args.learning_rate
+restore_best_weights = args.restore_best_weights
 #---------------------------------------
-base_dir = f"pinn_experimental_results_w{width}"
-
-# Check if the directory exists
-if os.path.exists(base_dir):
-    # Append current date and time to create a new unique folder
-    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_dir = f"{base_dir}_{date_str}"
-else:
-    exp_dir = base_dir
-
-# Create the directory
+exp_dir = f"experimental_results_w{width}_{activation}_patience_{early_stopping_patience}"
 os.makedirs(exp_dir, exist_ok=True)
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
-
 
 # --- Function to track GPU and CPU memory ---
 def get_gpu_memory():
@@ -61,29 +51,16 @@ def get_cpu_memory():
 
 # --- Problem Setup ---
 domain = pinn.Domain()
-problem = pinn.Problem(sigma=1.0)
+problem = pinn.Problem()
 
 # --- Experimental Settings ---
 domain_size = 20
-lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}
+lambda_weights = {'pde': 1.0, 'ic': 5.0, 'bc': 5.0}
 n_steps = 128
-
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
 
-epochs_list = [500, 1000, 2000, 4000, 8000, 16000]
-early_stopping_patience_list = [500, 500, 500, 1000, 1000, 1000]
-lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
-# layers_list = [
-#     [6],
-#     [12, 8],
-#     [24, 16],
-#     [48, 32, 16],
-#     [96, 64, 32],
-#     [192, 128, 64, 32],   
-# ]
-
-# logging
+# --- Logging ---
 n_dofs = []
 n_boundary_dofs = []
 pinn_results = []
@@ -91,13 +68,16 @@ result_history = {}
 
 # --- Main Loop ---
 for i in range(len(mesh_sizes)):
+    
+    # Reset GPU memory tracking
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+    initial_cpu_memory = get_cpu_memory()
+    initial_gpu_memory = get_gpu_memory()
 
-    # Hyperparameters' setup
-    #layers = [3] + layers_list[i] + [1]
+    #layers
     layers = [3] + [n_neurons[i]] * width + [1]
-    epochs = epochs_list[i]
-    early_stopping_patience = early_stopping_patience_list[i]
-    learning_rate = lr_list[i]
     
     #generate mesh
     mesh_size = mesh_sizes[i]
@@ -115,22 +95,11 @@ for i in range(len(mesh_sizes)):
     n_bc = round(0.2 * n_col)
     batch_sizes = {'pde': n_col, 'ic': n_ic, 'bc': n_ic}
 
-    #Define model
-    model = pinn.PINN(layers, problem, domain, activation=activation).to(device)
-    
+    model = pinn.PINN(layers, problem, domain, activation=activation)
+
     print(f"Training for mesh size {mesh_size} ...")
-
     start_time = time.time()
-
-    # Reset memory tracking
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
-        torch.cuda.empty_cache()
-    initial_cpu_memory = get_cpu_memory()
-    initial_gpu_memory = get_gpu_memory()
-
-    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience)
+    history = model.train(batch_sizes, epochs, learning_rate, lambda_weights, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=1e-6, restore_best_weights=restore_best_weights)
     
     train_time = time.time() - start_time
 
@@ -166,30 +135,12 @@ for i in range(len(mesh_sizes)):
     print("-" * 40)
 
     del model
-    
-    if mesh_size >=32:
+    if mesh_size >=64:
         pd.DataFrame(pinn_results).to_csv(f"{exp_dir}/df_pinn_training_results.csv")
-    #break
-    #if mesh_size==32:
-    #	break
+    # break
 
 # --- Export Results ---
 df_pinn = pd.DataFrame(pinn_results)
 
 df_pinn.to_csv(f"{exp_dir}/df_pinn_training_results.csv")
 print(df_pinn)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

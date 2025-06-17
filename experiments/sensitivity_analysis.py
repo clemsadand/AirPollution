@@ -1,6 +1,6 @@
 import numpy as np
-import crbe
-import pinn
+from src import crbe # Changed import
+from src import pinn # Changed import
 import meshio
 from tqdm import tqdm
 import time
@@ -32,6 +32,7 @@ epochs = args.epochs
 restore_best_weights = args.restore_best_weights
 #learning_rate = args.learning_rate
 # ------------------------------------
+from datetime import datetime # Added import here for clarity, was used without top-level import
 
 base_dir = f"experimental_results_sensibility_analysis"
 
