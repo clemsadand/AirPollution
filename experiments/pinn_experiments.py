@@ -32,7 +32,7 @@ restore_best_weights = args.restore_best_weights
 epochs = args.epochs
 #early_stopping_patience = args.early_stopping_patience
 #---------------------------------------
-base_dir = f"pinn_experimental_results_w{width}"
+base_dir = f"pinn_experimental_results"
 
 # Check if the directory exists
 if os.path.exists(base_dir):
