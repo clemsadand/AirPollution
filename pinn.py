@@ -363,7 +363,7 @@ class PINN(nn.Module):
         plt.savefig(f"{save_dir}/solution_{t}.png", dpi=500)
         plt.close()
         
-        print(f"Saved at {save_dir}/solution_{t}.pdf-png")
+        print(f"Saved at {save_dir}/solution_{t:0.3f}.pdf/png")
         
     def plot_interpolated_solution(self, t, mesh_data, analytical_sol_fn=None, save_dir="results", name=""):
         """Plot error evolution over time."""
