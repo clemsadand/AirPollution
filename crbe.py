@@ -9,7 +9,7 @@ from tqdm import tqdm
 import os
 from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
-import abc
+from utils.common import Problem, Domain, AdDifProblem 
 
 def create_mesh(n_points_per_axis=20, domain_size=2.0, filename="square_mesh.msh"):
     """Create a square mesh using GMSH API."""
@@ -43,81 +43,6 @@ def create_mesh(n_points_per_axis=20, domain_size=2.0, filename="square_mesh.msh
     gmsh.finalize()
     return filename
 
-def backend(x):
-    if isinstance(x, np.ndarray):
-        return np
-    elif isinstance(x, torch.Tensor):
-        return torch
-    else:
-        raise TypeError("Unsupported type")
-
-class AdDifProblem(abc.ABC):
-    def __init__(self, v, D):
-        self.v = v
-        self.D = D
-        
-    def initial_condition_fn(self, xyt):
-        pass
-    
-    def boundary_fn(self, xyt):
-        pass
-    
-    def source_term(self, xyt):
-        pass
-
-
-
-class Problem(AdDifProblem):
-    """Physical model definitions and analytical solution."""
-    
-    def __init__(self, v=[1.0, 0.5], D=0.1, sigma=1.0):
-        super().__init__(v, D)
-        """Initialize model parameters."""
-        self.sigma = sigma
-
-    def analytical_solution(self, xyt):
-        """Compute analytical solution at space-time points."""
-        xp = backend(xyt)
-        denom = 4 * self.D * xyt[:, 2] + self.sigma**2
-        
-        num = (xyt[:, 0] - self.v[0] * xyt[:, 2])**2 + (xyt[:, 1] - self.v[1] * xyt[:, 2])**2
-        return xp.exp(- num /denom) / (xp.pi * denom)
-
-    def initial_condition_fn(self, xy):
-        """Evaluate initial condition."""
-        xp = backend(xy)
-        if xp == np:
-            t = xp.zeros((xy.shape[0], 1), dtype=xp.float32)
-            xyt = xp.hstack([xy, t])
-        else:
-            t = xp.zeros((xy.shape[0], 1), dtype=xp.float32, device=xy.device)
-            xyt = xp.cat([xy, t], dim=1)
-        
-        return self.analytical_solution(xyt)
-
-    def boundary_fn(self, xyt):
-        return self.analytical_solution(xyt)
-    
-    def source_term(self, xyt):
-        xp = backend(xyt)
-        return xp.zeros_like(xyt[:,0])
-
-class Domain:
-    """Parameters defining the domain of the problem."""
-    
-    def __init__(self, Lx=20.0, Ly=20.0, T=10.0):
-        """Initialize domain parameters."""
-        self.Lx = Lx
-        self.Ly = Ly
-        self.T = T
-
-    def is_boundary(self, x):
-        """Check if points are on boundary."""
-        is_left = np.isclose(x[:, 0], -self.Lx, atol=1e-10)
-        is_right = np.isclose(x[:, 0], self.Lx, atol=1e-10)
-        is_bottom = np.isclose(x[:, 1], -self.Ly, atol=1e-10)
-        is_top = np.isclose(x[:, 1], self.Ly, atol=1e-10)
-        return is_left | is_right | is_bottom | is_top
 
 class MeshData:
     """Class for storing and processing mesh data."""
