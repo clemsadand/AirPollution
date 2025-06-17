@@ -104,8 +104,9 @@ Both `crbe.py` and `pinn.py` can be run directly to solve a default problem and 
 The experiment scripts automate running the solvers with different configurations and log the results:
 -   **PINN Experiments:**
     ```bash
-    python -m experiments.pinn_experiments --width=4 --epochs=1 --activation=tanh
+    python -m experiments.pinn_experiments --width=4 --epochs=0 --activation=tanh --restore_best_weights=True 
     ```
+    Seting `epochs=0` will use default value in the script.
     This script will train and evaluate PINNs with different network architectures (number of neurons) and evaluation mesh sizes. Results will be saved to `pinn_experimental_results/`.
 -   **CRBE Experiments:**
     ```bash
@@ -114,7 +115,7 @@ The experiment scripts automate running the solvers with different configuration
     This script will run the CRBE solver for various mesh sizes, and the results (errors, timings, memory usage) will be saved to `crbe_experimental_results/`.
 -   **Sensitivity Analysis:**
     ```bash
-    python -m experiments.sensitivity_analysis --width=4 --epochs=1 --activation=tanh
+    python -m experiments.sensitivity_analysis --width=4 --epochs=0 --activation=tanh
     ```
     This script will run the CRBE solver for various mesh sizes, and the results (errors, timings, memory usage) will be saved to `experimental_results_sensibility_analysis/`.
 -   **Fixed Runtime Analysis:**
