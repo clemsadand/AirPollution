@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description="PINN experiment with configurable 
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 #parser.add_argument('--depth', type=int, default=64, help='Number of neurons per layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
-parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
+parser.add_argument('--epochs', type=int, default=0, help='Number of epochs')
 parser.add_argument('--early_stopping_patience', type=int, default=0, help='Number of epochs to wait if no improvement')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
 #parser.add_argument('--learning_rate', type=float, default=3e-3, help='Learning rate')
@@ -78,7 +78,7 @@ filename = f"{exp_dir}/df_sensitivity_data.csv"
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
-epochs_list = [1000, 2000, 4000, 8000, 16000, 32000]
+epochs_list = [500, 1000, 2000, 4000, 8000, 16000] if not epochs else [epochs]*len(mesh_sizes)
 
 for j, mesh_size in [(idx_mesh_size, mesh_sizes[idx_mesh_size])]:#enumerate(mesh_sizes):
 	print(f"Training for mesh size {mesh_size} ...")

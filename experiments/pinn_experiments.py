@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description="PINN experiment with configurable 
 parser.add_argument('--width', type=int, default=4, help='Number of hidden layers in the neural network')
 parser.add_argument('--activation', type=str, default="tanh", help='Type of activation (tanh, sine, swish)')
 parser.add_argument('--restore_best_weights', type=bool, default=True, help='Wether to restore best model or not')
-parser.add_argument('--epochs', type=int, default=20000, help='Number of epochs')
+parser.add_argument('--epochs', type=int, default=0, help='Number of epochs')
 #parser.add_argument('--early_stopping_patience', type=int, default=1000, help='Number of epochs')
 #---------------------------------------
 args = parser.parse_args()
@@ -71,7 +71,7 @@ n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64, 128]
 n_neurons = [2, 4, 8, 16, 32, 64]
 
-epochs_list = [500, 1000, 2000, 4000, 8000, 16000]
+epochs_list = [500, 1000, 2000, 4000, 8000, 16000] if not epochs else [epochs]*len(mesh_sizes)
 early_stopping_patience_list = [500, 500, 500, 1000, 1000, 1000]
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
 
