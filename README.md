@@ -106,8 +106,7 @@ The experiment scripts automate running the solvers with different configuration
     ```bash
     python -m experiments.pinn_experiments --width=4 --epochs=0 --activation=tanh --restore_best_weights=True 
     ```
-    Seting `epochs=0` will use default value in the script.
-    This script will train and evaluate PINNs with different network architectures (number of neurons) and evaluation mesh sizes. Results will be saved to `pinn_experimental_results/`.
+    This script will train and evaluate PINNs with different network architectures (number of neurons) and evaluation mesh sizes. Note that setting `epochs=0` will use default value defined for each mesh size. Results will be saved to `pinn_experimental_results/`.
 -   **CRBE Experiments:**
     ```bash
     python -m experiments.crbe_experiments
