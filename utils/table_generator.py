@@ -288,19 +288,17 @@ def generate_latex_tables(df_crbe, df_pinn, memory_data=None, sensitivity_data=N
 
 #==================================================
 df_crbe = pd.read_csv(f"crbe_experimental_results/df_crbe_training_results.csv")
-
 df_pinn = pd.read_csv(f"pinn_experimental_results/df_pinn_training_results.csv")
+sensitivity_data = pd.read_csv(f"experimental_results_sensibility_analysis/df_sensitivity_data.csv")
+df_fixed_runtime = pd.read_csv(f"experimental_results_fixed_runtime/fixed_runtime_comparison.csv")
 
 memory_data = pd.DataFrame(
     {
         "cr_memory_mb": list(df_crbe["cpu_memory_usage_MB"].values),
-        "pinn_memory_mb": list(df_pinn["gpu_memory_usage_MB"].values) if torch.cuda.is_available() else list(df_pinn["cpu_memory_usage_MB"].values)
+        "pinn_memory_mb": list(df_pinn["gpu_memory_usage_MB"].values) #if torch.cuda.is_available() else list(df_pinn["cpu_memory_usage_MB"].values)
     }
 )
 
-sensitivity_data = pd.read_csv(f"experimental_results_sensibility_analysis/df_sensitivity_data.csv")
-
-df_fixed_runtime = pd.read_csv(f"experimental_results_fixed_runtime/fixed_runtime_comparison.csv")
 
 
 
