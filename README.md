@@ -188,7 +188,7 @@ Error metrics include L2 norm and maximum absolute error computed over the entir
 
 ### CRBE Configuration
 - **Element Type**: Crouzeix-Raviart (non-conforming linear elements)
-- **Time Stepping**: Backward Euler (first-order implicit)
+- **Time Stepping**: Backward Euler (first-order implicit) or Cranck-Nicolson (second-order implicit)
 - **Mesh Generation**: Structured triangular meshes via Gmsh
 
 ## License
