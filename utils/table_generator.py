@@ -290,7 +290,7 @@ def generate_latex_tables(df_crbe, df_pinn, memory_data=None, sensitivity_data=N
 df_crbe = pd.read_csv(f"experimental_results/crbe/df_crbe_training_results.csv")
 df_pinn = pd.read_csv(f"experimental_results/pinn/df_pinn_training_results.csv")
 sensitivity_data = pd.read_csv(f"experimental_results/sensibility/df_sensitivity_data.csv")
-df_fixed_runtime = pd.read_csv(f"experimental_resutls/fixed_runtime/fixed_runtime_comparison.csv")
+df_fixed_runtime = pd.read_csv(f"experimental_results/fixed_runtime/fixed_runtime_comparison.csv")
 
 memory_data = pd.DataFrame(
     {
