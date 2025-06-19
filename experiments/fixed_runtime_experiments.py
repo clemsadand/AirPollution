@@ -11,15 +11,22 @@ import pandas as pd
 import os
 import gc
 import matplotlib.pyplot as plt
+import argparse
 
-torch.manual_seed(1234)
+# Reproducibility
 np.random.seed(1234)
+torch.manual_seed(1234)
 
+# --- Parse Command Line Arguments ---
+parser = argparse.ArgumentParser(description="PINN experiment with configurable network width.")
+parser.add_argument('--run_for_testing', type=bool, default=False, help='Number of hidden layers in the neural network')
+args = parser.parse_args()
+run_for_testing = args.run_for_testing
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
-save_dir = "experimental_results_fixed_runtime"
+save_dir = "experimental_results/fixed_runtime"
 os.makedirs(save_dir, exist_ok=True)
 
 # --- Memory tracking functions ---
@@ -41,13 +48,13 @@ problem_crbe = crbe.Problem(sigma=1.0)
 domain_size = 20
 n_steps = 128
 mesh_sizes = [4, 8, 16, 32, 64]  # Reduced for faster testing
-time_budgets = [30, 60, 120, 180]  # Time budgets in seconds
+time_budgets = [30, 60, 120, 180] if not run_for_testing else [10] # Time budgets in seconds
 
 # PINN settings
 lambda_weights = {'pde': 180.0, 'ic': 80.0, 'bc': 80.0}
 #learning_rate = 3e-3
 lr_list = [3e-4, 3e-4, 2e-4, 4e-5, 1e-4, 1e-4]
-base_neurons = [2, 4, 8, 16, 32]  # Corresponding to mesh sizes
+base_neurons = [2, 4, 8, 16, 32] # Corresponding to mesh sizes
 
 # CRBE settings
 cr_element = crbe.ElementCR()

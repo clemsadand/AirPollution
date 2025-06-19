@@ -34,17 +34,8 @@ restore_best_weights = args.restore_best_weights
 # ------------------------------------
 from datetime import datetime # Added import here for clarity, was used without top-level import
 
-base_dir = f"experimental_results_sensibility_analysis"
-
-# Check if the directory exists
-if os.path.exists(base_dir):
-    # Append current date and time to create a new unique folder
-    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_dir = f"{base_dir}_{date_str}"
-else:
-    exp_dir = base_dir
+exp_dir = f"experimental_results/sensibility"
 os.makedirs(exp_dir, exist_ok=True)
-
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

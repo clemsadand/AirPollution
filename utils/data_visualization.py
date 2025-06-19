@@ -4,11 +4,11 @@ import numpy as np
 from matplotlib.patches import Rectangle
 import seaborn as sns
 from scipy import stats
-
-
+import argparse
+import os
 
 #***********************************************************
-exp_dir = "experimental_results"
+exp_dir = "experimental_results/figures"
 parser = argparse.ArgumentParser(description="PINN experiment.")
 parser.add_argument('--exp_dir', type=str, default=exp_dir, help='Path of the experiment results')
 
@@ -32,10 +32,10 @@ plt.rcParams.update({
 })
 
 # Load the data
-df_crbe = pd.read_csv(f"crbe_experimental_results/df_crbe_training_results.csv")
-df_pinn = pd.read_csv(f"pinn_experimental_results/df_pinn_training_results.csv")
-df_sensitivity = pd.read_csv(f"experimental_results_sensibility_analysis/df_sensitivity_data.csv")
-df_runtime = pd.read_csv(f"experimental_results_fixed_runtime/fixed_runtime_comparison.csv")
+df_crbe = pd.read_csv(f"experimental_results/crbe/df_crbe_training_results.csv")
+df_pinn = pd.read_csv(f"experimental_results/pinn/df_pinn_training_results.csv")
+df_sensitivity = pd.read_csv(f"experimental_results/sensibility/df_sensitivity_data.csv")
+df_runtime = pd.read_csv(f"experimental_results/fixed_runtime/fixed_runtime_comparison.csv")
 
 
 # Figure 1: Convergence Analysis (L2 and L∞ errors vs mesh size)

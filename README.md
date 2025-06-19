@@ -52,14 +52,15 @@ Key components:
 
 ## File Structure
 
--   `pinn.py`: Contains the implementation of the Physics-Informed Neural Network solver.
--   `crbe.py`: Contains the implementation of the Crouzeix-Raviart Finite Element Method solver.
--   `pinn_experiments.py`: Script to run and log experiments for the PINN solver, varying mesh sizes for evaluation and network neuron counts.
--   `crbe_experiments.py`: Script to run and log experiments for the CRBE solver with varying mesh sizes.
+-   `./`: Contains the core solver implementations.
+    -   `pinn.py`: Implementation of the Physics-Informed Neural Network solver.
+    -   `crbe.py`: Implementation of the Crouzeix-Raviart Finite Element Method solver.
+-   `utils/`: Contains the auxiliary implementations.
+    -   `utils/common.py`: Contains common class definitions like `Problem`, `Domain`, and `AdDifProblem`, used by both `pinn.py` and `crbe.py`.
+-   `experiments/`: Contains scripts for running various experiments, comparisons, and hyperparameter searches (e.g., `pinn_experiments.py`, `crbe_experiments.py`, `fixed_runtime_experiments.py`, `optimal_hyperparams_search.py`).
+-   `scripts/`: Contains utility or specific problem scripts.
+    -   `scripts/problem3.py`: Example script demonstrating a specific problem setup.
 -   `requirements.txt`: Lists the Python dependencies for the project.
--   `Readme.md`: This file.
--   `experimental_results/`: (Generated directory) Stores CSV files with results from experiment scripts.
--   `results/`: (Generated directory) Stores plots from individual solver runs.
 
 ## Installation
 
@@ -122,7 +123,5 @@ The experiment scripts automate running the solvers with different configuration
     python -m experiments.fixed_runtime_experiments
     ```
     This script will run the CRBE solver for various mesh sizes, and the results (errors, timings, memory usage) will be saved to `experimental_results_sensibility_analysis/`.
-
-
 
 

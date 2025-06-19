@@ -32,15 +32,7 @@ restore_best_weights = args.restore_best_weights
 epochs = args.epochs
 #early_stopping_patience = args.early_stopping_patience
 #---------------------------------------
-base_dir = f"pinn_experimental_results"
-
-# Check if the directory exists
-if os.path.exists(base_dir):
-    # Append current date and time to create a new unique folder
-    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_dir = f"{base_dir}_{date_str}"
-else:
-    exp_dir = base_dir
+exp_dir = "experimental_results/pinn"
 
 # Create the directory
 os.makedirs(exp_dir, exist_ok=True)

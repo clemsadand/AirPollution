@@ -14,7 +14,7 @@ import os
 torch.manual_seed(1234)
 np.random.seed(1234)
 
-exp_dir = "crbe_experimental_results"
+exp_dir = "experimental_results/crbe"
 os.makedirs(exp_dir, exist_ok=True)
 
 

@@ -5,7 +5,7 @@ from scipy.stats import linregress
 import argparse
 import os
 #***********************************************************
-exp_dir = "experimental_results"
+exp_dir = "experimental_results/tables"
 parser = argparse.ArgumentParser(description="PINN experiment.")
 parser.add_argument('--exp_dir', type=str, default=exp_dir, help='Path of the experiment results')
 
@@ -287,10 +287,10 @@ def generate_latex_tables(df_crbe, df_pinn, memory_data=None, sensitivity_data=N
     return tables
 
 #==================================================
-df_crbe = pd.read_csv(f"crbe_experimental_results/df_crbe_training_results.csv")
-df_pinn = pd.read_csv(f"pinn_experimental_results/df_pinn_training_results.csv")
-sensitivity_data = pd.read_csv(f"experimental_results_sensibility_analysis/df_sensitivity_data.csv")
-df_fixed_runtime = pd.read_csv(f"experimental_results_fixed_runtime/fixed_runtime_comparison.csv")
+df_crbe = pd.read_csv(f"experimental_results/crbe/df_crbe_training_results.csv")
+df_pinn = pd.read_csv(f"experimental_results/pinn/df_pinn_training_results.csv")
+sensitivity_data = pd.read_csv(f"experimental_results/sensibility/df_sensitivity_data.csv")
+df_fixed_runtime = pd.read_csv(f"experimental_resutls/fixed_runtime/fixed_runtime_comparison.csv")
 
 memory_data = pd.DataFrame(
     {

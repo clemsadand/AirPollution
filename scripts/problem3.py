@@ -49,10 +49,11 @@ if __name__ == "__main__":
 				  
 		#***************************************
 		problem = Problem() #define an advection-diffusion problem
-		domain = crbe.Domain()
+		#domain = crbe.Domain()
+		d_size = 2000 #domain size
+		domain = Domain(Lx=d_size, Ly=d_size, T=10)
 
 		#create a mesh
-		d_size = 20 #domain size
 		m_size = 64 # mesh size
 		n_steps = 128 # number of time steps
 

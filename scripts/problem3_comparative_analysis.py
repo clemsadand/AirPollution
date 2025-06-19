@@ -36,12 +36,12 @@ def main():
     
     mesh_sizes = [4, 8, 16, 32, 64, 128]
     n_neurons = [2, 4, 8, 16, 32, 64]
-    epochs_list = [500, 1000, 2000, 4000, 8000, 16000]# if not epochs else [epochs]*len(mesh_sizes)
+    #epochs_list = [500, 1000, 2000, 4000, 8000, 16000]# if not epochs else [epochs]*len(mesh_sizes)
     #early_stopping_patience_list = [500, 500, 1000, 1000, 1000]
     lr_list = [1e-3, 1e-3, 1e-3, 1e-4, 2e-4, 3e-4]
     lambda_weights = {'pde': 1.0, 'ic': 8.0, 'bc': 1.0}
     lr = 1e-3
-    epochs = 10 # Using 3000 epochs as per plan
+    epochs = 10000 # Using 3000 epochs as per plan
     
     results_data = []
     
@@ -90,7 +90,7 @@ def main():
         u_crbe_final_midpoints = all_crbe_solutions[-1, :].copy()
         current_run_data.update({
             'crbe_time_solve_s': crbe_time, 'crbe_cpu_mem_diff_MB': crbe_cpu_mem_used,
-            'crbe_gpu_mem_peak_MB': peak_crbe_gpu_mem, 'crbe_status': 'success'
+            'crbe_gpu_mem_peak_MB': peak_crbe_gpu_mem
         })
         print(f"CRBE solve (m_size={m_size}) finished: Time {crbe_time:.2f}s, CPU Mem {crbe_cpu_mem_used:.2f}MB, GPU Mem {peak_crbe_gpu_mem:.2f}MB")
 
@@ -124,7 +124,7 @@ def main():
 				epochs, 
 				lr, 
 				lambda_weights, 
-				early_stopping_patience=0, 
+				early_stopping_patience=500, 
 				early_stopping_min_delta=1e-6,
 				restore_best_weights=True
 		)
@@ -144,7 +144,6 @@ def main():
         current_run_data.update({
             'pinn_time_train_s': pinn_time, 'pinn_cpu_mem_diff_MB': pinn_cpu_mem_used,
             'pinn_gpu_mem_peak_MB': peak_pinn_gpu_mem, 'pinn_epochs_run': epochs_run,
-            'pinn_status': 'success'
         })
         print(f"PINN training (m_size={m_size}) finished: Time {pinn_time:.2f}s ({epochs_run} epochs), CPU Mem {pinn_cpu_mem_used:.2f}MB, GPU Mem {peak_pinn_gpu_mem:.2f}MB")
         del pinn_model, history, midpoints_tensor, t_final_tensor, xyt_final, u_pinn_final_midpoints_tensor
@@ -154,7 +153,7 @@ def main():
         error_diff_abs = np.abs(u_pinn_final_midpoints - u_crbe_final_midpoints)
         l2_error_diff = np.linalg.norm(error_diff_abs)
         max_error_diff = np.max(error_diff_abs)
-        current_run_data.update({'l2_error_diff': l2_error_diff, 'max_error_diff': max_error_diff, 'error_status': 'success'})
+        current_run_data.update({'l2_error_diff': l2_error_diff, 'max_error_diff': max_error_diff)
         print(f"Error (m_size={m_size}): L2 Diff = {l2_error_diff:.4e}, Max Diff = {max_error_diff:.4e}")
         
         results_data.append(current_run_data)
