@@ -84,7 +84,7 @@ ax2.legend(frameon=True, fancybox=True, shadow=True)
 
 plt.tight_layout()
 plt.savefig(f'{exp_dir}/convergence_analysis.pdf', dpi=600, bbox_inches='tight')
-plt.show()
+#plt.show()
 
 # Figure 2: Computational Efficiency Comparison
 # ============================================================================
@@ -140,7 +140,7 @@ ax2.tick_params(axis='both', which='major', labelsize=12)
 
 plt.tight_layout()
 plt.savefig(f'{exp_dir}/computational_efficiency.pdf', dpi=600, bbox_inches='tight')
-plt.show()
+#plt.show()
 
 
 # Figure 3: Sensitivity Analysis
@@ -167,7 +167,7 @@ plt.tick_params(axis='both', which='major', labelsize=12)
 plt.tight_layout()
 plt.savefig(f'{exp_dir}/sensitivity_analysis.pdf', dpi=600, bbox_inches='tight', 
             facecolor='white', edgecolor='none')
-plt.show()
+#plt.show()
 
 
 # Create a detailed memory comparison figure
@@ -226,7 +226,7 @@ for i, cpu in enumerate(crbe_cpu):
 plt.tight_layout()
 plt.savefig(f'{exp_dir}/memory_comparison_cpu_gpu.pdf', dpi=600, bbox_inches='tight', 
             facecolor='white', edgecolor='none')
-plt.show()
+#plt.show()
 
 # Figure 5: Fixed Runtime Budget Analysis
 # ============================================================================
@@ -271,5 +271,5 @@ ax2.grid(True, which="both", ls="--", alpha=0.3)
 plt.tight_layout()
 plt.savefig(f'{exp_dir}/runtime_budget_analysis.pdf', dpi=600, bbox_inches='tight', 
             facecolor='white', edgecolor='none')
-plt.show()
+#plt.show()
 
