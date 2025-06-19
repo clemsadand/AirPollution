@@ -10,7 +10,7 @@ This project studies the modeling of air pollution using the advection-diffusion
 The project solves the 2D advection-diffusion equation:
 
 $$
-\partial_t c + \mathbf v \cdot \nabla c - D \Delta c = s(x, y, t) \quad \text{in } 
+\partial_t c + \mathbf v \cdot \nabla c - D \Delta c = s(x, y, t)
 $$
 
 where:
