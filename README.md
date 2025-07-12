@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1234567.svg)](https://doi.org/10.5281/zenodo.15869133)
+
 # Air Pollution Modeling: Comparative Analysis of Numerical Methods
 
 This project studies the modeling of air pollution using the advection-diffusion equation in a bounded two-dimensional domain. We implement and compare two numerical methods for solving time-dependent advection-diffusion equations:
